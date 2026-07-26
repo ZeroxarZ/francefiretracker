@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fire-tracker-v1';
+const CACHE_NAME = 'fire-tracker-france-v3';
 const ASSETS_TO_CACHE = [
     '/',
     '/static/css/style.css',

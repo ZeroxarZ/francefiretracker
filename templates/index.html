@@ -3,18 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gironde Fire Tracker | Live Tactical HUD</title>
+    
+    <!-- 👉 SEO STRATÉGIQUE & INDEXATION -->
+    <title>France Fire Tracker | Carte en direct des Incendies & Avions</title>
+    <meta name="description" content="Suivez en temps réel les incendies de forêt en France, les panaches de fumée et les rotations des avions de la Sécurité Civile (Canadair, Dash, Dragon) grâce aux satellites NASA et radar live.">
+    <meta name="keywords" content="incendie france, feu de foret direct, carte feux france, canadair en direct, radar securite civile, feux gironde, nasa firms france, suivi incendie temps reel">
+    <meta name="author" content="ZeroxarZ">
+    <link rel="canonical" href="https://francefiretracker.me/">
+
+    <!-- 👉 OPEN GRAPH (FACEBOOK / DISCORD / LINKEDIN) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://francefiretracker.me/">
+    <meta property="og:title" content="France Fire Tracker | Suivi Tactique en Temps Réel">
+    <meta property="og:description" content="Supervision tactique des feux de forêt en France : détection satellite NASA FIRMS, radar aéronefs et météo opérationnelle en direct.">
+    <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/785/785116.png">
+    <meta property="og:locale" content="fr_FR">
+
+    <!-- 👉 TWITTER CARDS -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://francefiretracker.me/">
+    <meta name="twitter:title" content="France Fire Tracker | Suivi Tactique en Temps Réel">
+    <meta name="twitter:description" content="Carte interactive et radar en direct : feux de forêt, zones brûlées et canadairs en France.">
+    <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/785/785116.png">
     
     <!-- 👉 CONFIGURATION PWA & NATIVE IOS / ANDROID -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0a0c10">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FireTracker">
+    <meta name="apple-mobile-web-app-title" content="FranceFire">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/785/785116.png">
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+    <!-- 👉 DONNÉES STRUCTURÉES GOOGLE (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "France Fire Tracker",
+      "url": "https://francefiretracker.me/",
+      "description": "Système de supervision tactique et de cartographie en direct des incendies et moyens aériens de secours en France.",
+      "applicationCategory": "EmergencyApplication",
+      "operatingSystem": "All",
+      "author": {
+        "@type": "Person",
+        "name": "ZeroxarZ",
+        "url": "https://github.com/ZeroxarZ"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      }
+    }
+    </script>
 </head>
 <body>
 
@@ -28,7 +72,7 @@
     <header class="hud-header">
         <div class="brand">
             <div class="brand-indicator"></div>
-            <span>GIRONDE FIRE TRACKER</span>
+            <span>FRANCE FIRE TRACKER</span>
         </div>
         
         <div class="layer-filters">
@@ -38,19 +82,25 @@
             <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
             <button class="filter-btn active" id="btn-burned" onclick="toggleLayer('burned')">🛡️ Brûlés</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
-            <button class="filter-btn" id="btn-weather" onclick="toggleLayer('weather')">🌧️ Vent</button>
+            
+            <div class="weather-dropdown-container">
+                <button class="filter-btn" id="btn-weather-main" onclick="toggleWeatherMenu()">🌦️ Météo</button>
+                <div class="weather-menu-popup" id="weather-menu-popup">
+                    <button class="weather-sub-btn" id="sub-btn-rain" onclick="toggleWeatherSubLayer('rain')">🌧️ Nuages / Pluie</button>
+                    <button class="weather-sub-btn" id="sub-btn-wind" onclick="toggleWeatherSubLayer('wind')">💨 Flux de Vent</button>
+                </div>
+            </div>
             
             <span class="divider">|</span>
             <button class="map-switch-btn" id="btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Noire</button>
         </div>
 
         <div class="header-right-group">
-            <div class="version-badge" id="app-version" title="Version du dépôt Git / Commit actuel">v1.0.---</div>
+            <div class="version-badge" id="app-version" title="Version du commit actuel">v1.0.---</div>
             <div class="weather-widget" onclick="openWeatherModal()" title="Prévisions à 6h">
-                <div class="weather-item" style="color:#00ffff; font-weight:700;">📍 <span id="val-city">Gironde</span></div>
+                <div class="weather-item" style="color:#00ffff; font-weight:700;">📍 <span id="val-city">France</span></div>
                 <div class="weather-item"><span>🌡️</span> <span id="val-temp" class="weather-value">--°C</span></div>
                 <div class="weather-item"><span>💧</span> <span id="val-hum" class="weather-value">--%</span></div>
-                <div class="weather-item"><span>💨</span> <span id="val-wind" class="weather-value">-- km/h</span></div>
                 <div class="weather-item"><span>🌧️</span> <span id="val-rain" class="weather-value">0 mm</span></div>
             </div>
         </div>
@@ -105,7 +155,10 @@
                 </div>
 
                 <div class="section-title desktop-only" onclick="toggleSection('fires')" style="margin-top: 6px;">
-                    <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
+                        <div class="smoke-loading-spinner" id="smoke-data-loader" title="Acquisition données fumées..."></div>
+                    </div>
                     <button class="collapse-btn" id="btn-collapse-fires">−</button>
                 </div>
                 <div id="fire-list-container" class="scrollable-list">
@@ -113,13 +166,12 @@
                 </div>
             </div>
 
-            <!-- 👉 FOOTER TACTIQUE INTÉGRÉ AU FOND DE LA SIDEBAR -->
             <div class="sidebar-footer">
                 <div class="footer-left">
                     <span>⚡ <b>ZeroxarZ</b> — Licence MIT</span>
                 </div>
                 <div class="footer-right">
-                    <a href="https://github.com/ZeroxarZ" target="_blank" rel="noopener noreferrer" class="github-btn" title="Voir le code source sur GitHub">
+                    <a href="https://github.com/ZeroxarZ" target="_blank" rel="noopener noreferrer" class="github-btn" title="Code source sur GitHub">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                         <span>GitHub</span>
                     </a>
@@ -135,27 +187,27 @@
             <div class="legend-content" id="legend-items">
                 <div class="legend-row">
                     <span class="legend-dot" style="background: #ffcc00; box-shadow: 0 0 8px #ffcc00;"></span>
-                    <span>Aéronef Sécurité Civile & Militaire (Dash, Canadair, A400M, Dragon)</span>
+                    <span>Aéronef Sécurité Civile & Militaire</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-dot" style="background: #00e5ff; box-shadow: 0 0 8px #00e5ff;"></span>
-                    <span>Trafic Civil / Commercial / Tourisme</span>
+                    <span>Trafic Civil / Commercial</span>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: #ff1e00; box-shadow: 0 0 8px #ff1e00;"></span>
-                    <span>Foyer Thermique Actif (Satellite NASA FIRMS)</span>
+                    <span class="legend-emoji">🔥</span>
+                    <span>Foyer Actif (Satellite NASA FIRMS)</span>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: rgba(139, 0, 0, 0.7); border: 1px solid #ff4500;"></span>
+                    <span class="legend-dot" style="background: rgba(139, 0, 0, 0.6); border: 2px dashed #ff4500;"></span>
                     <span>Périmètre de Zone Brûlée (Lignes courbées)</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-dot" style="background: #00aaff; box-shadow: 0 0 8px #00aaff;"></span>
-                    <span>Zone d'Intervention / Largage (Détecté par Air)</span>
+                    <span>Zone d'Intervention / Largage (Air)</span>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: #00ffff; border-radius: 4px;"></span>
-                    <span>Aérodrome / Pélicandrome / Base Militaire</span>
+                    <span class="legend-emoji">✈️</span>
+                    <span>Aérodrome / Base Sécurité Civile</span>
                 </div>
             </div>
         </div>
@@ -164,7 +216,7 @@
     <div class="weather-modal-overlay" id="weather-modal" onclick="closeWeatherModal(event)">
         <div class="weather-modal-content">
             <div class="weather-modal-header">
-                <span>📅 Prévisions à 6 Heures — 📍 <span id="modal-city">Gironde</span></span>
+                <span>📅 Prévisions à 6 Heures — 📍 <span id="modal-city">France</span></span>
                 <button class="close-modal-btn" onclick="closeWeatherModal(event, true)">×</button>
             </div>
             <div class="forecast-grid" id="forecast-container">
@@ -175,13 +227,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('✅ PWA : Service Worker actif (Scope:', reg.scope, ')'))
-                    .catch(err => console.error('❌ PWA : Erreur d\'enregistrement SW:', err));
+                navigator.serviceWorker.register('/sw.js').catch(err => console.error('Erreur SW:', err));
             });
         }
     </script>
