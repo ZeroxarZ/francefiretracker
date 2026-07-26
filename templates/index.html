@@ -9,7 +9,6 @@
 </head>
 <body>
 
-    <!-- 👉 Écran de chargement initial (Splash Screen) -->
     <div id="page-loader" class="loader-overlay">
         <div class="loader-content">
             <div class="loader-spinner"></div>
@@ -28,6 +27,7 @@
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
             <button class="filter-btn" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
             <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
+            <button class="filter-btn active" id="btn-burned" onclick="toggleLayer('burned')">🛡️ Brûlés</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
             <button class="filter-btn" id="btn-weather" onclick="toggleLayer('weather')">🌧️ Vent</button>
             
@@ -48,7 +48,7 @@
     </header>
 
     <div class="satellite-banner" id="sat-banner">
-        🛰️ <b>Dernier survol satellite (MODIS/VIIRS) :</b> <span id="sat-time-fr">Synchronisation...</span>
+        🛰️ <b>Dernier survol :</b> <span id="sat-time-fr">Synchronisation...</span> &nbsp;|&nbsp; 📡 <b>Prochain passage :</b> <span id="sat-next-fr">Calcul...</span>
     </div>
 
     <main class="main-container">
@@ -74,6 +74,10 @@
                     <span>Foyer Thermique Actif (Satellite NASA FIRMS)</span>
                 </div>
                 <div class="legend-row">
+                    <span class="legend-dot" style="background: rgba(139, 0, 0, 0.7); border: 1px solid #ff4500;"></span>
+                    <span>Périmètre de Zone Brûlée (Lignes courbées)</span>
+                </div>
+                <div class="legend-row">
                     <span class="legend-dot" style="background: #00aaff; box-shadow: 0 0 8px #00aaff;"></span>
                     <span>Zone d'Intervention / Largage (Détecté par Air)</span>
                 </div>
@@ -92,7 +96,7 @@
 
             <div class="mobile-tabs">
                 <button class="mobile-tab-btn active" id="tab-btn-aircraft" onclick="switchMobileTab('aircraft')">✈️ Avions (<span id="tab-count-aircraft">0</span>)</button>
-                <button class="mobile-tab-btn" id="tab-btn-fires" onclick="switchMobileTab('fires')">🔥 Feux (<span id="tab-count-fires">0</span>)</button>
+                <button class="mobile-tab-btn" id="tab-btn-fires" onclick="switchMobileTab('fires')">🔥 Feux & Bilan (<span id="tab-count-fires">0</span>)</button>
             </div>
 
             <div class="panel-section" id="panel-aircraft" style="flex: 1;">
@@ -106,8 +110,26 @@
             </div>
 
             <div class="panel-section" id="panel-fires">
-                <div class="section-title desktop-only" onclick="toggleSection('fires')">
-                    <span>🛰️ Feux Actifs (<span id="fire-count">0</span>)</span>
+                <div class="section-title desktop-only">
+                    <span>📊 Bilan Opérationnel</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Hectares Impactés</span>
+                        <span class="stat-val" id="stat-hectares">0 ha</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Bâtiments / Habitations</span>
+                        <span class="stat-val" id="stat-houses">0</span>
+                    </div>
+                    <div class="stat-card" style="grid-column: span 2;">
+                        <span class="stat-label">Statut Évacuations & Sécurité</span>
+                        <span class="stat-val" id="stat-evac" style="font-size:0.78rem; color:var(--accent-yellow);">Situation calme</span>
+                    </div>
+                </div>
+
+                <div class="section-title desktop-only" onclick="toggleSection('fires')" style="margin-top: 6px;">
+                    <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
                     <button class="collapse-btn" id="btn-collapse-fires">−</button>
                 </div>
                 <div id="fire-list-container" class="scrollable-list">

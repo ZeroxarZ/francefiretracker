@@ -3,7 +3,7 @@ import io
 import math
 import subprocess
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, jsonify, render_template, request
 import requests
@@ -109,6 +109,121 @@ def calculate_smoke_plume(lat, lon, wind_dir, wind_speed, frp=15.0):
         points.append([p_lon, p_lat])
     points.append([lon, lat])
     return {"type": "Feature", "properties": {"length_km": round(length_km, 1), "wind_speed": wind_speed, "frp": frp}, "geometry": {"type": "Polygon", "coordinates": [points]}}
+
+def convex_hull(points):
+    if len(points) <= 3:
+        return points
+    sorted_pts = sorted(points, key=lambda p: (p[0], p[1]))
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower = []
+    for p in sorted_pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper = []
+    for p in reversed(sorted_pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+def calculate_clustered_burned_perimeters(fire_points):
+    if not fire_points:
+        return []
+    
+    clusters = []
+    unvisited = set(range(len(fire_points)))
+    
+    while unvisited:
+        start_idx = unvisited.pop()
+        cluster = [fire_points[start_idx]]
+        queue = [start_idx]
+        
+        while queue:
+            curr = queue.pop(0)
+            curr_pt = fire_points[curr]
+            for other in list(unvisited):
+                other_pt = fire_points[other]
+                dist = math.sqrt((curr_pt[0] - other_pt[0])**2 + (curr_pt[1] - other_pt[1])**2)
+                if dist < 0.22:
+                    unvisited.remove(other)
+                    cluster.append(other_pt)
+                    queue.append(other)
+        clusters.append(cluster)
+        
+    burned_features = []
+    for idx, cl in enumerate(clusters):
+        if len(cl) == 1:
+            lon, lat = cl[0]
+            radius_km = 3.0
+            lat_deg_per_km = 1.0 / 111.0
+            lon_deg_per_km = 1.0 / (111.0 * math.cos(math.radians(lat)))
+            circle_pts = []
+            for i in range(16):
+                angle = 2 * math.pi * (i / 16.0)
+                circle_pts.append([lon + radius_km * math.sin(angle) * lon_deg_per_km, lat + radius_km * math.cos(angle) * lat_deg_per_km])
+            circle_pts.append(circle_pts[0])
+            burned_features.append({
+                "type": "Feature",
+                "properties": {"name": f"Zone Impactée #{idx+1}", "status": "Surface brûlée"},
+                "geometry": {"type": "Polygon", "coordinates": [circle_pts]}
+            })
+        else:
+            c_lon = sum(p[0] for p in cl) / len(cl)
+            c_lat = sum(p[1] for p in cl) / len(cl)
+            hull = convex_hull(cl)
+            if len(hull) < 3:
+                lon, lat = cl[0]
+                radius_km = 4.0
+                lat_deg_per_km = 1.0 / 111.0
+                lon_deg_per_km = 1.0 / (111.0 * math.cos(math.radians(lat)))
+                circle_pts = []
+                for i in range(16):
+                    angle = 2 * math.pi * (i / 16.0)
+                    circle_pts.append([lon + radius_km * math.sin(angle) * lon_deg_per_km, lat + radius_km * math.cos(angle) * lat_deg_per_km])
+                circle_pts.append(circle_pts[0])
+                burned_features.append({
+                    "type": "Feature",
+                    "properties": {"name": f"Zone Impactée #{idx+1}", "status": "Surface brûlée"},
+                    "geometry": {"type": "Polygon", "coordinates": [circle_pts]}
+                })
+            else:
+                buffered = []
+                for pt in hull:
+                    dx = pt[0] - c_lon
+                    dy = pt[1] - c_lat
+                    dist = math.sqrt(dx*dx + dy*dy)
+                    if dist > 0:
+                        new_lon = c_lon + dx * 1.3
+                        new_lat = c_lat + dy * 1.3
+                    else:
+                        new_lon, new_lat = pt[0], pt[1]
+                    buffered.append([round(new_lon, 5), round(new_lat, 5)])
+                buffered.append(buffered[0])
+                burned_features.append({
+                    "type": "Feature",
+                    "properties": {"name": f"Zone Impactée #{idx+1}", "status": "Surface brûlée"},
+                    "geometry": {"type": "Polygon", "coordinates": [buffered]}
+                })
+    return burned_features
+
+def get_next_satellite_pass():
+    now_utc = datetime.utcnow()
+    pass_hours_utc = [1.75, 13.5] 
+    current_hour_decimal = now_utc.hour + now_utc.minute / 60.0
+    
+    next_pass_dt = None
+    for ph in pass_hours_utc:
+        if ph > current_hour_decimal:
+            next_pass_dt = datetime(now_utc.year, now_utc.month, now_utc.day, int(ph), int((ph % 1) * 60))
+            break
+            
+    if not next_pass_dt:
+        next_pass_dt = datetime(now_utc.year, now_utc.month, now_utc.day, 1, 45) + timedelta(days=1)
+        
+    local_pass = next_pass_dt + timedelta(hours=2)
+    return local_pass.strftime("%d/%m/%Y à %H:%M")
 
 @app.route("/")
 def index():
@@ -343,6 +458,7 @@ def get_fires():
         
         features = []
         plumes = []
+        fire_points = []
         seen_coords = set()
         latest_utc_iso = None
         
@@ -366,6 +482,7 @@ def get_fires():
                             intensity_label = "Critique / Sévère" if frp > 40 else "Foyer Actif" if frp > 15 else "Début de feu / Modéré"
                             features.append({"type": "Feature", "properties": {"id": f"NASA-{coord_key}", "name": f"Détection Satellite ({lat:.2f}, {lon:.2f})", "status": f"FRP: {frp:.1f} MW", "intensity": intensity_label, "frp": round(frp, 1), "time_utc": iso_utc, "source": "NASA FIRMS Satellite"}, "geometry": {"type": "Point", "coordinates": [lon, lat]}})
                             plumes.append(calculate_smoke_plume(lat, lon, w_dir, w_speed, frp))
+                            fire_points.append([lon, lat])
                 except Exception: pass
 
         try:
@@ -381,9 +498,28 @@ def get_fires():
                             now_utc = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%00Z")
                             features.append({"type": "Feature", "properties": {"id": f"TACTICAL-{coord_key}", "name": f"⚠️ Zone d'Intervention ({ac['callsign']})", "status": "Largage / Surveillance active", "intensity": "Détecté par rotation aérienne", "frp": 25.0, "time_utc": now_utc, "source": f"Radar Tactique ({ac['callsign']})"}, "geometry": {"type": "Point", "coordinates": [lon, lat]}})
                             plumes.append(calculate_smoke_plume(lat, lon, w_dir, w_speed, frp=25.0))
+                            fire_points.append([lon, lat])
         except Exception: pass
 
-        return {"fires": {"type": "FeatureCollection", "features": features}, "plumes": {"type": "FeatureCollection", "features": plumes}, "count": len(features), "latest_satellite_utc": latest_utc_iso or datetime.utcnow().strftime("%Y-%m-%dT%H:%M:00Z"), "timestamp": datetime.now().strftime("%H:%M:%S")}
+        clustered_burned_areas = calculate_clustered_burned_perimeters(fire_points)
+        burned_areas_collection = {"type": "FeatureCollection", "features": clustered_burned_areas}
+
+        official_stats = {
+            "hectares": "42 000 ha",
+            "houses": 198,
+            "evacuations": "220 000 personnes évacuées"
+        }
+
+        return {
+            "fires": {"type": "FeatureCollection", "features": features}, 
+            "plumes": {"type": "FeatureCollection", "features": plumes}, 
+            "burned_areas": burned_areas_collection,
+            "count": len(features), 
+            "latest_satellite_utc": latest_utc_iso or datetime.utcnow().strftime("%Y-%m-%dT%H:%M:00Z"), 
+            "next_satellite_pass": get_next_satellite_pass(),
+            "stats": official_stats,
+            "timestamp": datetime.now().strftime("%H:%M:%S")
+        }
 
     return jsonify(get_cached_data("fires_live_nasa", 180.0, fetch_all_fires))
 

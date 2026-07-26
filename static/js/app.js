@@ -13,9 +13,10 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 const plumeLayer = L.layerGroup(); 
 const fireLayer = L.layerGroup().addTo(map);
+const burnedLayer = L.layerGroup().addTo(map);
 const aircraftLayer = L.layerGroup().addTo(map);
 const airportLayer = L.layerGroup().addTo(map);
-const cityLayer = L.layerGroup(); // Non ajouté par défaut
+const cityLayer = L.layerGroup();
 
 const aircraftMarkers = {};
 const fireMarkers = {};
@@ -182,8 +183,7 @@ function switchMapStyle() {
     }
 }
 
-// 👉 Villes, fumées et vent désactivés par défaut (false)
-const activeLayers = { aircraft: true, airports: true, cities: false, fires: true, plumes: false, weather: false };
+const activeLayers = { aircraft: true, airports: true, cities: false, fires: true, burned: true, plumes: false, weather: false };
 function toggleLayer(layerName) {
     activeLayers[layerName] = !activeLayers[layerName];
     const btn = document.getElementById(`btn-${layerName}`);
@@ -193,6 +193,7 @@ function toggleLayer(layerName) {
         if (layerName === 'airports') map.addLayer(airportLayer);
         if (layerName === 'cities') map.addLayer(cityLayer);
         if (layerName === 'fires') map.addLayer(fireLayer);
+        if (layerName === 'burned') map.addLayer(burnedLayer);
         if (layerName === 'plumes') map.addLayer(plumeLayer);
         if (layerName === 'weather') startWeatherAnimation();
     } else {
@@ -201,6 +202,7 @@ function toggleLayer(layerName) {
         if (layerName === 'airports') map.removeLayer(airportLayer);
         if (layerName === 'cities') map.removeLayer(cityLayer);
         if (layerName === 'fires') map.removeLayer(fireLayer);
+        if (layerName === 'burned') map.removeLayer(burnedLayer);
         if (layerName === 'plumes') map.removeLayer(plumeLayer);
         if (layerName === 'weather') stopWeatherAnimation();
     }
@@ -244,7 +246,7 @@ function animateWeather() {
         let p = particles[i];
         ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - dx * p.length, p.y - dy * p.length);
         p.x += dx * p.speed; p.y += dy * p.speed;
-        if (currentRain > 0.1 && Math.random() < 0.02) { ctx.fillStyle = 'rgba(120, 200, 255, 0.8);'; ctx.fillRect(p.x, p.y, 2.5, 2.5); }
+        if (currentRain > 0.1 && Math.random() < 0.02) { ctx.fillStyle = 'rgba(120, 200, 255, 0.8)'; ctx.fillRect(p.x, p.y, 2.5, 2.5); }
         if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
     }
@@ -306,23 +308,47 @@ map.on('moveend', () => {
 async function fetchFires() {
     try {
         const res = await fetch('/api/fires'); const data = await res.json();
-        fireLayer.clearLayers(); plumeLayer.clearLayers();
+        fireLayer.clearLayers(); plumeLayer.clearLayers(); burnedLayer.clearLayers();
         Object.keys(fireMarkers).forEach(k => delete fireMarkers[k]);
         
         const fireListElem = document.getElementById('fire-list-container'); fireListElem.innerHTML = '';
         if (data.latest_satellite_utc) {
             const dateObj = new Date(data.latest_satellite_utc);
-            document.getElementById('sat-time-fr').innerText = `${dateObj.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'medium' })} (Heure Légale Française)`;
+            document.getElementById('sat-time-fr').innerText = `${dateObj.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'medium' })}`;
         }
+        if (data.next_satellite_pass) {
+            document.getElementById('sat-next-fr').innerText = data.next_satellite_pass;
+        }
+
+        if (data.stats) {
+            document.getElementById('stat-hectares').innerText = data.stats.hectares;
+            document.getElementById('stat-houses').innerText = data.stats.houses;
+            document.getElementById('stat-evac').innerText = data.stats.evacuations;
+        }
+
         if (!data.fires || data.fires.features.length === 0) {
             fireListElem.innerHTML = `<div class="card-item" style="border-left-color: #00dd66;">Aucun foyer thermique actif.</div>`;
             document.getElementById('fire-count').innerText = `0`; 
-            if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `0`;
+            const tabCountFires = document.getElementById('tab-count-fires');
+            if (tabCountFires) tabCountFires.innerText = `0`;
             return;
         }
         
         const geoJsonPlumes = L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.3, color: '#ff6600', weight: 1 } });
         if (activeLayers.plumes) geoJsonPlumes.addTo(plumeLayer);
+
+        const geoJsonBurned = L.geoJSON(data.burned_areas, { 
+            style: { 
+                fillColor: '#8b0000', 
+                fillOpacity: 0.35, 
+                color: '#ff4500', 
+                weight: 2, 
+                dashArray: '5, 5', 
+                lineCap: 'round', 
+                lineJoin: 'round' 
+            } 
+        });
+        if (activeLayers.burned) geoJsonBurned.addTo(burnedLayer);
         
         data.fires.features.forEach(fire => {
             const props = fire.properties; const coords = fire.geometry.coordinates;
@@ -337,7 +363,8 @@ async function fetchFires() {
             fireListElem.innerHTML += `<div class="card-item fire" style="border-left-color: ${iconBg};" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
         });
         document.getElementById('fire-count').innerText = `${data.count}`;
-        if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${data.count}`;
+        const tabCountFiresElem = document.getElementById('tab-count-fires');
+        if (tabCountFiresElem) tabCountFiresElem.innerText = `${data.count}`;
     } catch (err) {}
 }
 
