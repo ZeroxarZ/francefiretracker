@@ -505,9 +505,9 @@ def get_fires():
         burned_areas_collection = {"type": "FeatureCollection", "features": clustered_burned_areas}
 
         official_stats = {
-            "hectares": "42 000 ha",
-            "houses": 198,
-            "evacuations": "220 000 personnes évacuées"
+            "hectares": "44 000 ha",
+            "houses": 219,
+            "evacuations": "250 000 personnes évacuées"
         }
 
         return {
@@ -522,6 +522,15 @@ def get_fires():
         }
 
     return jsonify(get_cached_data("fires_live_nasa", 180.0, fetch_all_fires))
+
+# 👉 ROUTES POUR LA PWA (SERVICE WORKER & MANIFESTE)
+@app.route('/sw.js')
+def service_worker():
+    return app.send_static_file('sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

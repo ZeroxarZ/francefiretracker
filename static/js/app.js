@@ -133,10 +133,15 @@ function selectFire(lat, lon, markerId) {
     setTimeout(() => { if (fireMarkers[markerId]) fireMarkers[markerId].openPopup(); }, 1250);
 }
 
+// 👉 CORRECTION MOBILE : Le JS applique directement la classe de fermeture sur la légende
 function toggleMobileDrawer() {
     const sidebar = document.getElementById('sidebar-panel');
+    const legend = document.getElementById('map-legend');
     const toggleText = document.getElementById('drawer-toggle-text');
+    
     sidebar.classList.toggle('drawer-collapsed');
+    if (legend) legend.classList.toggle('drawer-collapsed');
+    
     toggleText.innerText = sidebar.classList.contains('drawer-collapsed') ? "▲ Agrandir le panneau" : "▼ Réduire le panneau";
 }
 
