@@ -11,11 +11,11 @@ let currentMapMode = 'dark';
 darkTile.addTo(map);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-// 👉 Fumées et Vent initialisés à vide / non ajoutés à la carte par défaut pour la fluidité
 const plumeLayer = L.layerGroup(); 
 const fireLayer = L.layerGroup().addTo(map);
 const aircraftLayer = L.layerGroup().addTo(map);
 const airportLayer = L.layerGroup().addTo(map);
+const cityLayer = L.layerGroup().addTo(map);
 
 const aircraftMarkers = {};
 const fireMarkers = {};
@@ -26,6 +26,38 @@ let selectedCallsign = null;
 let latestWeatherData = null;
 
 const persistentTraces = {};
+
+const MAJOR_CITIES = [
+    { name: "Bordeaux", lat: 44.8378, lon: -0.5792, major: true },
+    { name: "Arcachon", lat: 44.6560, lon: -1.1600, major: false },
+    { name: "La Teste-de-Buch", lat: 44.6280, lon: -1.1400, major: false },
+    { name: "Libourne", lat: 44.9180, lon: -0.2420, major: false },
+    { name: "Langon", lat: 44.5540, lon: -0.2450, major: false },
+    { name: "Blaye", lat: 45.1290, lon: -0.6620, major: false },
+    { name: "Lesparre-Médoc", lat: 45.3110, lon: -0.9330, major: false },
+    { name: "Pessac", lat: 44.8015, lon: -0.6293, major: false },
+    { name: "Mérignac", lat: 44.8386, lon: -0.6436, major: false },
+    { name: "Saint-Émilion", lat: 44.8900, lon: -0.1550, major: false },
+    { name: "Andernos-les-Bains", lat: 44.7470, lon: -1.0500, major: false },
+    { name: "Cap Ferret", lat: 44.6300, lon: -1.2500, major: false },
+    { name: "Biscarrosse", lat: 44.3900, lon: -1.1600, major: false },
+    { name: "Mont-de-Marsan", lat: 43.8900, lon: -0.5000, major: true },
+    { name: "Biarritz", lat: 43.4830, lon: -1.5580, major: true }
+];
+
+function loadCityLabels() {
+    cityLayer.clearLayers();
+    MAJOR_CITIES.forEach(city => {
+        const cssClass = city.major ? "city-label-container city-label-major" : "city-label-container";
+        const icon = L.divIcon({
+            className: 'custom-city-icon',
+            html: `<div class="${cssClass}">${city.major ? '🏙️ ' : '📍 '}${city.name}</div>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0]
+        });
+        L.marker([city.lat, city.lon], { icon: icon, interactive: false }).addTo(cityLayer);
+    });
+}
 
 function toggleLegend() {
     const content = document.getElementById('legend-items');
@@ -150,8 +182,7 @@ function switchMapStyle() {
     }
 }
 
-// 👉 Fumées et Vent désactivés par défaut (false)
-const activeLayers = { aircraft: true, airports: true, fires: true, plumes: false, weather: false };
+const activeLayers = { aircraft: true, airports: true, cities: true, fires: true, plumes: false, weather: false };
 function toggleLayer(layerName) {
     activeLayers[layerName] = !activeLayers[layerName];
     const btn = document.getElementById(`btn-${layerName}`);
@@ -159,6 +190,7 @@ function toggleLayer(layerName) {
         btn.classList.add('active');
         if (layerName === 'aircraft') map.addLayer(aircraftLayer);
         if (layerName === 'airports') map.addLayer(airportLayer);
+        if (layerName === 'cities') map.addLayer(cityLayer);
         if (layerName === 'fires') map.addLayer(fireLayer);
         if (layerName === 'plumes') map.addLayer(plumeLayer);
         if (layerName === 'weather') startWeatherAnimation();
@@ -166,6 +198,7 @@ function toggleLayer(layerName) {
         btn.classList.remove('active');
         if (layerName === 'aircraft') map.removeLayer(aircraftLayer);
         if (layerName === 'airports') map.removeLayer(airportLayer);
+        if (layerName === 'cities') map.removeLayer(cityLayer);
         if (layerName === 'fires') map.removeLayer(fireLayer);
         if (layerName === 'plumes') map.removeLayer(plumeLayer);
         if (layerName === 'weather') stopWeatherAnimation();
@@ -287,7 +320,6 @@ async function fetchFires() {
             return;
         }
         
-        // Ajout des fumées uniquement si le calque actif est activé par l'utilisateur
         const geoJsonPlumes = L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.3, color: '#ff6600', weight: 1 } });
         if (activeLayers.plumes) geoJsonPlumes.addTo(plumeLayer);
         
@@ -392,10 +424,10 @@ async function fetchAircraft() {
 function startLiveLoop() {
     fetchVersion();
     fetchAirports();
+    loadCityLabels();
     fetchWeather();
     fetchAircraft();
     fetchFires();
-    // Le vent (weather) démarre à l'état désactivé par défaut (pas d'animation lourde inutile au chargement)
     
     setInterval(fetchAircraft, 4000);
     setInterval(() => { fetchWeather(); fetchFires(); }, 45000);

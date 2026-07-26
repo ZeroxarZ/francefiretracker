@@ -29,15 +29,15 @@ TACTICAL_CALLSIGNS = [
 ]
 
 TACTICAL_TYPES = [
-    "EC25", "AS33", "H225", # Super Puma
-    "EC45", "BK17", "H145", # Dragon Sécurité Civile
-    "EC55", "S365", "AS36", # Dauphin / SAMU
-    "AT8T",                 # Air Tractor AT-802
-    "CL2T", "CL41", "CL21", # Canadair CL-415
-    "DH8D",                 # Dash 8 Q400 MR
-    "A400",                 # Airbus A400M Atlas
-    "C130", "C30J",         # Lockheed C-130 Hercules
-    "CN35", "C295"          # Casa / Transport tactique
+    "EC25", "AS33", "H225", 
+    "EC45", "BK17", "H145", 
+    "EC55", "S365", "AS36", 
+    "AT8T",                 
+    "CL2T", "CL41", "CL21", 
+    "DH8D",                 
+    "A400",                 
+    "C130", "C30J",         
+    "CN35", "C295"          
 ]
 
 REGIONAL_AIRPORTS = [
@@ -62,7 +62,6 @@ THREAD_POOL = ThreadPoolExecutor(max_workers=8)
 AIRCRAFT_TRAILS = {}
 
 def get_git_version():
-    """Récupère le hash du dernier commit git pour marquer la version."""
     try:
         sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
         return f"v1.0.{sha}"
