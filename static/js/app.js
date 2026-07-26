@@ -11,7 +11,8 @@ let currentMapMode = 'dark';
 darkTile.addTo(map);
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-const plumeLayer = L.layerGroup().addTo(map);
+// 👉 Fumées et Vent initialisés à vide / non ajoutés à la carte par défaut pour la fluidité
+const plumeLayer = L.layerGroup(); 
 const fireLayer = L.layerGroup().addTo(map);
 const aircraftLayer = L.layerGroup().addTo(map);
 const airportLayer = L.layerGroup().addTo(map);
@@ -38,9 +39,6 @@ function toggleLegend() {
     }
 }
 
-// =====================================================================
-// 👉 CHARGEMENT DE LA VERSION GIT DYNAMIQUE
-// =====================================================================
 async function fetchVersion() {
     try {
         const res = await fetch('/api/version');
@@ -152,7 +150,8 @@ function switchMapStyle() {
     }
 }
 
-const activeLayers = { aircraft: true, airports: true, fires: true, plumes: true, weather: true };
+// 👉 Fumées et Vent désactivés par défaut (false)
+const activeLayers = { aircraft: true, airports: true, fires: true, plumes: false, weather: false };
 function toggleLayer(layerName) {
     activeLayers[layerName] = !activeLayers[layerName];
     const btn = document.getElementById(`btn-${layerName}`);
@@ -287,7 +286,10 @@ async function fetchFires() {
             if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `0`;
             return;
         }
-        L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.3, color: '#ff6600', weight: 1 } }).addTo(plumeLayer);
+        
+        // Ajout des fumées uniquement si le calque actif est activé par l'utilisateur
+        const geoJsonPlumes = L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.3, color: '#ff6600', weight: 1 } });
+        if (activeLayers.plumes) geoJsonPlumes.addTo(plumeLayer);
         
         data.fires.features.forEach(fire => {
             const props = fire.properties; const coords = fire.geometry.coordinates;
@@ -388,12 +390,12 @@ async function fetchAircraft() {
 }
 
 function startLiveLoop() {
-    fetchVersion(); // 👉 Charge le numéro de version Git au démarrage
+    fetchVersion();
     fetchAirports();
     fetchWeather();
     fetchAircraft();
     fetchFires();
-    startWeatherAnimation();
+    // Le vent (weather) démarre à l'état désactivé par défaut (pas d'animation lourde inutile au chargement)
     
     setInterval(fetchAircraft, 4000);
     setInterval(() => { fetchWeather(); fetchFires(); }, 45000);

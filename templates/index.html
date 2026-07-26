@@ -19,17 +19,16 @@
             <button class="filter-btn active" id="btn-aircraft" onclick="toggleLayer('aircraft')">✈️ Avions</button>
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
             <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
-            <button class="filter-btn active" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
-            <button class="filter-btn active" id="btn-weather" onclick="toggleLayer('weather')">🌧️ Vent</button>
+            <!-- 👉 Fumées et Vent désactivés par défaut (boutons inactifs au lancement) -->
+            <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
+            <button class="filter-btn" id="btn-weather" onclick="toggleLayer('weather')">🌧️ Vent</button>
             
             <span class="divider">|</span>
             <button class="map-switch-btn" id="btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Noire</button>
         </div>
 
         <div class="header-right-group">
-            <!-- 👉 NUMÉRO DE VERSION GIT AUTOMATIQUE -->
             <div class="version-badge" id="app-version" title="Version du dépôt Git / Commit actuel">v1.0.---</div>
-
             <div class="weather-widget" onclick="openWeatherModal()" title="Prévisions à 6h">
                 <div class="weather-item" style="color:#00ffff; font-weight:700;">📍 <span id="val-city">Gironde</span></div>
                 <div class="weather-item"><span>🌡️</span> <span id="val-temp" class="weather-value">--°C</span></div>
