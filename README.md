@@ -68,5 +68,5 @@ L'application est **100 % responsive** et installable en tant que **Progressive 
 
 ### 1. Cloner le dépôt
 ```bash
-git clone [https://github.com/ZeroxarZ/francefiretracker.git](https://github.com/ZeroxarZ/francefiretracker.git)
+git clone https://github.com/ZeroxarZ/francefiretracker.git
 cd france-fire-tracker
