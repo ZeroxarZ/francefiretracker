@@ -24,7 +24,7 @@ let activePolylineCore = null;
 let selectedCallsign = null;
 let latestWeatherData = null;
 
-// 👉 STOCKAGE DE TRACE LONGUE DURÉE EN MÉMOIRE CLIENT
+// 👉 MÉMOIRE PERSISTANTE SECONDE PAR SECONDE (CUMUL GARANTI DEPUIS LA CONNEXION)
 const persistentTraces = {};
 
 function toggleLegend() {
@@ -40,7 +40,7 @@ function toggleLegend() {
 }
 
 // =====================================================================
-// 👉 SÉLECTION D'UN AVION ET RECUPÉRATION DE TRACE AU DÉCOLLAGE
+// 👉 SÉLECTION D'UN AVION + AFFICHAGE IMMÉDIAT DE LA TRACE CUMULÉE
 // =====================================================================
 async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCode) {
     selectedCallsign = callsign;
@@ -49,8 +49,8 @@ async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCod
     if (activePolylineCore) map.removeLayer(activePolylineCore);
     activePolylineOuter = null; activePolylineCore = null;
     
-    // Initialisation ou récupération de la trace
-    if (!persistentTraces[callsign] || persistentTraces[callsign].length < 2) {
+    // Initialisation de la trace globale
+    if (!persistentTraces[callsign] || persistentTraces[callsign].length === 0) {
         persistentTraces[callsign] = localTrail && localTrail.length > 0 ? [...localTrail] : [[lat, lon]];
     }
     
@@ -66,16 +66,15 @@ async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCod
     map.flyTo([targetLat, lon], 12, { animate: true, duration: 1.2 });
     setTimeout(() => { if (aircraftMarkers[callsign]) aircraftMarkers[callsign].openPopup(); }, 1250);
 
-    // Téléchargement de l'historique complet (Hex OACI ou Callsign)
+    // Tentative de récupération complémentaire via l'API de trace
     const traceId = (hexCode && hexCode !== "N/A") ? hexCode : callsign;
     try {
         const res = await fetch(`/api/trace/${traceId}`);
         const traceData = await res.json();
-        if (traceData.coords && traceData.coords.length > 3) {
-            // Fusion intelligente : conservation des points historiques + récents
+        if (traceData.coords && traceData.coords.length > persistentTraces[callsign].length) {
             persistentTraces[callsign] = [...traceData.coords, ...persistentTraces[callsign]];
             
-            // Dédoublonnage léger des points contigus
+            // Dédoublonnage
             const cleanCoords = [];
             persistentTraces[callsign].forEach(pt => {
                 if (cleanCoords.length === 0 || Math.abs(cleanCoords[cleanCoords.length-1][0] - pt[0]) > 0.00005 || Math.abs(cleanCoords[cleanCoords.length-1][1] - pt[1]) > 0.00005) {
@@ -317,12 +316,12 @@ async function fetchAircraft() {
             activeCallsigns.add(ac.callsign); 
             const icon = getPlaneIcon(ac.heading, ac.is_tactical, ac.role, ac.type);
             
-            // 👉 ACCUMULATION EN TEMPS RÉEL DU NOUVEAU POINT SANS COLLISION
+            // 👉 CUMUL ROBUSTE SECONDE PAR SECONDE SANS PERTE DE MÉMOIRE
             if (!persistentTraces[ac.callsign]) {
                 persistentTraces[ac.callsign] = ac.trail && ac.trail.length > 0 ? [...ac.trail] : [[ac.lat, ac.lon]];
             } else {
                 const lastPt = persistentTraces[ac.callsign][persistentTraces[ac.callsign].length - 1];
-                if (Math.abs(lastPt[0] - ac.lat) > 0.00005 || Math.abs(lastPt[1] - ac.lon) > 0.00005) {
+                if (Math.abs(lastPt[0] - ac.lat) > 0.00002 || Math.abs(lastPt[1] - ac.lon) > 0.00002) {
                     persistentTraces[ac.callsign].push([ac.lat, ac.lon]);
                 }
             }
@@ -376,7 +375,6 @@ async function fetchAircraft() {
         document.getElementById('aircraft-count').innerText = `${data.tactical_count} tactique / ${data.total_count}`;
         if (document.getElementById('tab-count-aircraft')) document.getElementById('tab-count-aircraft').innerText = `${data.total_count}`;
         
-        // 👉 RAFFRAÎCHISSEMENT DU SILLAGE VISUEL EN TEMPS RÉEL
         if (selectedCallsign && persistentTraces[selectedCallsign] && activePolylineOuter && activePolylineCore) {
             activePolylineOuter.setLatLngs(persistentTraces[selectedCallsign]);
             activePolylineCore.setLatLngs(persistentTraces[selectedCallsign]);
