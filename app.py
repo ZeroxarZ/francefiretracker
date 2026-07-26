@@ -1,6 +1,7 @@
 import csv
 import io
 import math
+import subprocess
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +20,6 @@ HEADERS = {
 
 SHOW_CIVIL_TRAFFIC = True 
 
-# 👉 LISTE ÉLARGIE AVEC LES INDICATIFS MILITAIRES ET LOGISTIQUES (BLADE, CTM, RRR, FAF, etc.)
 TACTICAL_CALLSIGNS = [
     "OMBHG", "OMBH", "PUMA", "PUMAB", "DRAG", "DRAGON", "RESCU", "SAMU", "SECUR", "CIVIL", 
     "HELIC", "HELI", "GIFF", "F-Z", "F-O", "F-PUMA", "MILAN", "PELIC", "TRACT", "TRACK", 
@@ -28,7 +28,6 @@ TACTICAL_CALLSIGNS = [
     "BLADE", "CTM", "RRR", "FAF", "FRB", "COTE", "F-RBAX"
 ]
 
-# 👉 CODES TYPES OACI : AVIONS, HÉLICOPTÈRES & TRANSPORT MILITAIRE (A400, C130, etc.)
 TACTICAL_TYPES = [
     "EC25", "AS33", "H225", # Super Puma
     "EC45", "BK17", "H145", # Dragon Sécurité Civile
@@ -36,7 +35,7 @@ TACTICAL_TYPES = [
     "AT8T",                 # Air Tractor AT-802
     "CL2T", "CL41", "CL21", # Canadair CL-415
     "DH8D",                 # Dash 8 Q400 MR
-    "A400",                 # Airbus A400M Atlas (Armée de l'Air)
+    "A400",                 # Airbus A400M Atlas
     "C130", "C30J",         # Lockheed C-130 Hercules
     "CN35", "C295"          # Casa / Transport tactique
 ]
@@ -61,6 +60,14 @@ REGIONAL_AIRPORTS = [
 CACHE_MEMORY = {}
 THREAD_POOL = ThreadPoolExecutor(max_workers=8)
 AIRCRAFT_TRAILS = {}
+
+def get_git_version():
+    """Récupère le hash du dernier commit git pour marquer la version."""
+    try:
+        sha = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
+        return f"v1.0.{sha}"
+    except Exception:
+        return "v1.0.dev"
 
 def update_aircraft_trail(callsign, lat, lon):
     if callsign not in AIRCRAFT_TRAILS:
@@ -107,6 +114,10 @@ def calculate_smoke_plume(lat, lon, wind_dir, wind_speed, frp=15.0):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/api/version")
+def api_version():
+    return jsonify({"version": get_git_version()})
 
 @app.route("/api/airports")
 def get_airports():
@@ -277,7 +288,6 @@ def get_aircraft():
             ac_type = (ac["type"] or "").strip().upper()
             reg_code = (ac["reg"] or "").strip().upper()
             
-            # 👉 VÉRIFICATION MILITAIRE & TACTIQUE (CALLSIGN, TYPE OACI OU IMMAT)
             is_tactical = (
                 any(callsign.startswith(p) or p in callsign for p in TACTICAL_CALLSIGNS) or 
                 any(ac_type == t or t in ac_type for t in TACTICAL_TYPES) or

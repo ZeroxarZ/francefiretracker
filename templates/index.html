@@ -26,12 +26,17 @@
             <button class="map-switch-btn" id="btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Noire</button>
         </div>
 
-        <div class="weather-widget" onclick="openWeatherModal()" title="Prévisions à 6h">
-            <div class="weather-item" style="color:#00ffff; font-weight:700;">📍 <span id="val-city">Gironde</span></div>
-            <div class="weather-item"><span>🌡️</span> <span id="val-temp" class="weather-value">--°C</span></div>
-            <div class="weather-item"><span>💧</span> <span id="val-hum" class="weather-value">--%</span></div>
-            <div class="weather-item"><span>💨</span> <span id="val-wind" class="weather-value">-- km/h</span></div>
-            <div class="weather-item"><span>🌧️</span> <span id="val-rain" class="weather-value">0 mm</span></div>
+        <div class="header-right-group">
+            <!-- 👉 NUMÉRO DE VERSION GIT AUTOMATIQUE -->
+            <div class="version-badge" id="app-version" title="Version du dépôt Git / Commit actuel">v1.0.---</div>
+
+            <div class="weather-widget" onclick="openWeatherModal()" title="Prévisions à 6h">
+                <div class="weather-item" style="color:#00ffff; font-weight:700;">📍 <span id="val-city">Gironde</span></div>
+                <div class="weather-item"><span>🌡️</span> <span id="val-temp" class="weather-value">--°C</span></div>
+                <div class="weather-item"><span>💧</span> <span id="val-hum" class="weather-value">--%</span></div>
+                <div class="weather-item"><span>💨</span> <span id="val-wind" class="weather-value">-- km/h</span></div>
+                <div class="weather-item"><span>🌧️</span> <span id="val-rain" class="weather-value">0 mm</span></div>
+            </div>
         </div>
     </header>
 
@@ -43,7 +48,6 @@
         <div id="map"></div>
         <canvas id="weather-canvas"></canvas>
 
-        <!-- 👉 LÉGENDE TACTIQUE FLOTTANTE (BAS DE LA CARTE) -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>
@@ -52,7 +56,7 @@
             <div class="legend-content" id="legend-items">
                 <div class="legend-row">
                     <span class="legend-dot" style="background: #ffcc00; box-shadow: 0 0 8px #ffcc00;"></span>
-                    <span>Aéronef Sécurité Civile (Dash, Canadair, Tracker, Super Puma, Dragon)</span>
+                    <span>Aéronef Sécurité Civile & Militaire (Dash, Canadair, A400M, Dragon)</span>
                 </div>
                 <div class="legend-row">
                     <span class="legend-dot" style="background: #00e5ff; box-shadow: 0 0 8px #00e5ff;"></span>

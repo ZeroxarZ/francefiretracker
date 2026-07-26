@@ -24,7 +24,6 @@ let activePolylineCore = null;
 let selectedCallsign = null;
 let latestWeatherData = null;
 
-// 👉 MÉMOIRE PERSISTANTE SECONDE PAR SECONDE (CUMUL GARANTI DEPUIS LA CONNEXION)
 const persistentTraces = {};
 
 function toggleLegend() {
@@ -40,8 +39,18 @@ function toggleLegend() {
 }
 
 // =====================================================================
-// 👉 SÉLECTION D'UN AVION + AFFICHAGE IMMÉDIAT DE LA TRACE CUMULÉE
+// 👉 CHARGEMENT DE LA VERSION GIT DYNAMIQUE
 // =====================================================================
+async function fetchVersion() {
+    try {
+        const res = await fetch('/api/version');
+        const data = await res.json();
+        if (data.version) {
+            document.getElementById('app-version').innerText = data.version;
+        }
+    } catch (err) {}
+}
+
 async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCode) {
     selectedCallsign = callsign;
     
@@ -49,8 +58,7 @@ async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCod
     if (activePolylineCore) map.removeLayer(activePolylineCore);
     activePolylineOuter = null; activePolylineCore = null;
     
-    // Initialisation de la trace globale
-    if (!persistentTraces[callsign] || persistentTraces[callsign].length === 0) {
+    if (!persistentTraces[callsign] || persistentTraces[callsign].length < 2) {
         persistentTraces[callsign] = localTrail && localTrail.length > 0 ? [...localTrail] : [[lat, lon]];
     }
     
@@ -66,15 +74,13 @@ async function selectAircraft(callsign, lat, lon, localTrail, isTactical, hexCod
     map.flyTo([targetLat, lon], 12, { animate: true, duration: 1.2 });
     setTimeout(() => { if (aircraftMarkers[callsign]) aircraftMarkers[callsign].openPopup(); }, 1250);
 
-    // Tentative de récupération complémentaire via l'API de trace
     const traceId = (hexCode && hexCode !== "N/A") ? hexCode : callsign;
     try {
         const res = await fetch(`/api/trace/${traceId}`);
         const traceData = await res.json();
-        if (traceData.coords && traceData.coords.length > persistentTraces[callsign].length) {
+        if (traceData.coords && traceData.coords.length > 3) {
             persistentTraces[callsign] = [...traceData.coords, ...persistentTraces[callsign]];
             
-            // Dédoublonnage
             const cleanCoords = [];
             persistentTraces[callsign].forEach(pt => {
                 if (cleanCoords.length === 0 || Math.abs(cleanCoords[cleanCoords.length-1][0] - pt[0]) > 0.00005 || Math.abs(cleanCoords[cleanCoords.length-1][1] - pt[1]) > 0.00005) {
@@ -316,7 +322,6 @@ async function fetchAircraft() {
             activeCallsigns.add(ac.callsign); 
             const icon = getPlaneIcon(ac.heading, ac.is_tactical, ac.role, ac.type);
             
-            // 👉 CUMUL ROBUSTE SECONDE PAR SECONDE SANS PERTE DE MÉMOIRE
             if (!persistentTraces[ac.callsign]) {
                 persistentTraces[ac.callsign] = ac.trail && ac.trail.length > 0 ? [...ac.trail] : [[ac.lat, ac.lon]];
             } else {
@@ -383,6 +388,7 @@ async function fetchAircraft() {
 }
 
 function startLiveLoop() {
+    fetchVersion(); // 👉 Charge le numéro de version Git au démarrage
     fetchAirports();
     fetchWeather();
     fetchAircraft();

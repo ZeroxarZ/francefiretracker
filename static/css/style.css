@@ -125,6 +125,27 @@ body {
     transform: scale(1.05); 
 }
 
+/* --- GROUPE DROITE EN-TÊTE (VERSION + MÉTÉO) --- */
+.header-right-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* --- BADGE DE VERSION --- */
+.version-badge {
+    font-size: 0.72rem;
+    font-family: monospace;
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    color: var(--accent-cyan);
+    padding: 4px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
 /* --- WIDGET MÉTÉO --- */
 .weather-widget { 
     display: flex; 
@@ -393,9 +414,9 @@ body {
     box-shadow: 0 0 8px rgba(0,229,255,0.4); 
 }
 
-/* --- BULLES LEAFLET AVEC OPACITÉ CORRIGÉE (VOIR DERRIÈRE) --- */
+/* --- BULLES LEAFLET AVEC OPACITÉ CORRIGÉE --- */
 .leaflet-popup-content-wrapper { 
-    background: rgba(14, 18, 26, 0.78) !important; /* Verre fumé semi-transparent */
+    background: rgba(14, 18, 26, 0.78) !important; 
     backdrop-filter: blur(12px) !important; 
     -webkit-backdrop-filter: blur(12px) !important; 
     color: var(--text-main) !important; 
@@ -572,7 +593,11 @@ body {
     .hud-header { height: auto; flex-direction: column; padding: 8px 12px; gap: 6px; align-items: flex-start; }
     .brand { font-size: 0.95rem; width: 100%; justify-content: space-between; }
     .layer-filters { width: 100%; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; justify-content: flex-start; }
-    .weather-widget { width: 100%; justify-content: space-around; font-size: 0.75rem; padding: 6px; }
+    
+    .header-right-group { width: 100%; justify-content: space-between; gap: 6px; }
+    .version-badge { font-size: 0.68rem; padding: 3px 8px; }
+    .weather-widget { flex: 1; justify-content: space-around; font-size: 0.72rem; padding: 5px; }
+    
     .satellite-banner { font-size: 0.72rem; padding: 4px 10px; }
     
     .map-legend { bottom: 46vh; left: 10px; width: 240px; font-size: 0.7rem; }
