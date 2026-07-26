@@ -15,7 +15,7 @@ const plumeLayer = L.layerGroup();
 const fireLayer = L.layerGroup().addTo(map);
 const aircraftLayer = L.layerGroup().addTo(map);
 const airportLayer = L.layerGroup().addTo(map);
-const cityLayer = L.layerGroup().addTo(map);
+const cityLayer = L.layerGroup(); // Non ajouté par défaut
 
 const aircraftMarkers = {};
 const fireMarkers = {};
@@ -182,7 +182,8 @@ function switchMapStyle() {
     }
 }
 
-const activeLayers = { aircraft: true, airports: true, cities: true, fires: true, plumes: false, weather: false };
+// 👉 Villes, fumées et vent désactivés par défaut (false)
+const activeLayers = { aircraft: true, airports: true, cities: false, fires: true, plumes: false, weather: false };
 function toggleLayer(layerName) {
     activeLayers[layerName] = !activeLayers[layerName];
     const btn = document.getElementById(`btn-${layerName}`);
@@ -243,7 +244,7 @@ function animateWeather() {
         let p = particles[i];
         ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - dx * p.length, p.y - dy * p.length);
         p.x += dx * p.speed; p.y += dy * p.speed;
-        if (currentRain > 0.1 && Math.random() < 0.02) { ctx.fillStyle = 'rgba(120, 200, 255, 0.8)'; ctx.fillRect(p.x, p.y, 2.5, 2.5); }
+        if (currentRain > 0.1 && Math.random() < 0.02) { ctx.fillStyle = 'rgba(120, 200, 255, 0.8);'; ctx.fillRect(p.x, p.y, 2.5, 2.5); }
         if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
     }
@@ -421,13 +422,26 @@ async function fetchAircraft() {
     } catch (err) {}
 }
 
-function startLiveLoop() {
+function hideLoader() {
+    const loader = document.getElementById('page-loader');
+    if (loader) {
+        loader.classList.add('hidden');
+        setTimeout(() => loader.remove(), 400);
+    }
+}
+
+async function startLiveLoop() {
     fetchVersion();
     fetchAirports();
     loadCityLabels();
-    fetchWeather();
-    fetchAircraft();
-    fetchFires();
+    
+    await Promise.all([
+        fetchWeather(),
+        fetchAircraft(),
+        fetchFires()
+    ]);
+
+    hideLoader();
     
     setInterval(fetchAircraft, 4000);
     setInterval(() => { fetchWeather(); fetchFires(); }, 45000);

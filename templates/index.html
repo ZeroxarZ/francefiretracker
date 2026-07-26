@@ -9,6 +9,14 @@
 </head>
 <body>
 
+    <!-- 👉 Écran de chargement initial (Splash Screen) -->
+    <div id="page-loader" class="loader-overlay">
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">CHARGEMENT DU SYSTÈME TACTIQUE...</div>
+        </div>
+    </div>
+
     <header class="hud-header">
         <div class="brand">
             <div class="brand-indicator"></div>
@@ -18,7 +26,7 @@
         <div class="layer-filters">
             <button class="filter-btn active" id="btn-aircraft" onclick="toggleLayer('aircraft')">✈️ Avions</button>
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
-            <button class="filter-btn active" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
+            <button class="filter-btn" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
             <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
             <button class="filter-btn" id="btn-weather" onclick="toggleLayer('weather')">🌧️ Vent</button>
