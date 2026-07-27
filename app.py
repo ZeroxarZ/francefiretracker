@@ -172,7 +172,8 @@ def calculate_clustered_burned_perimeters(fire_points):
                 angle = 2 * math.pi * (i / 8.0)
                 circle_pts.append([round(lon + radius_km * math.sin(angle) * lon_deg_per_km, 4), round(lat + radius_km * math.cos(angle) * lat_deg_per_km, 4)])
             circle_pts.append(circle_pts[0])
-            burned_features.append({"type": "Feature", "properties": {"name": f"Zone #{idx+1}"}, "geometry": {"type": "Polygon", "coordinates": [circle_pts]}})
+            # 👉 RENOMMAGE EN PÉRIMÈTRE DE SÉCURITÉ
+            burned_features.append({"type": "Feature", "properties": {"name": f"Zone de sécurité #{idx+1}", "status": "Périmètre de sécurité"}, "geometry": {"type": "Polygon", "coordinates": [circle_pts]}})
             total_hectares += calculate_polygon_area_ha(circle_pts)
         else:
             c_lon = sum(p[0] for p in cl) / len(cl)
@@ -188,7 +189,7 @@ def calculate_clustered_burned_perimeters(fire_points):
                     angle = 2 * math.pi * (i / 8.0)
                     circle_pts.append([round(lon + radius_km * math.sin(angle) * lon_deg_per_km, 4), round(lat + radius_km * math.cos(angle) * lat_deg_per_km, 4)])
                 circle_pts.append(circle_pts[0])
-                burned_features.append({"type": "Feature", "properties": {"name": f"Zone #{idx+1}"}, "geometry": {"type": "Polygon", "coordinates": [circle_pts]}})
+                burned_features.append({"type": "Feature", "properties": {"name": f"Zone de sécurité #{idx+1}", "status": "Périmètre de sécurité"}, "geometry": {"type": "Polygon", "coordinates": [circle_pts]}})
                 total_hectares += calculate_polygon_area_ha(circle_pts)
             else:
                 buffered = []
@@ -203,7 +204,7 @@ def calculate_clustered_burned_perimeters(fire_points):
                         new_lon, new_lat = pt[0], pt[1]
                     buffered.append([round(new_lon, 4), round(new_lat, 4)])
                 buffered.append(buffered[0])
-                burned_features.append({"type": "Feature", "properties": {"name": f"Zone #{idx+1}"}, "geometry": {"type": "Polygon", "coordinates": [buffered]}})
+                burned_features.append({"type": "Feature", "properties": {"name": f"Zone de sécurité #{idx+1}", "status": "Périmètre de sécurité"}, "geometry": {"type": "Polygon", "coordinates": [buffered]}})
                 total_hectares += calculate_polygon_area_ha(buffered)
                 
     return burned_features, round(total_hectares, 1)
