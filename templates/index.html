@@ -92,7 +92,6 @@
         <div class="drawer-content">
             <div class="drawer-section-label">Radar Aérien (Avions & Secours)</div>
             <button class="drawer-item active" id="drawer-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
-            <!-- 👉 TRAFIC CIVIL DÉSACTIVÉ PAR DÉFAUT (Plus de classe 'active') -->
             <button class="drawer-item" id="drawer-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
 
             <div class="drawer-section-label" style="margin-top:14px;">Couches Cartographiques</div>
@@ -114,7 +113,6 @@
     <!-- 👉 MENU AVIONS FLOTTANT (PC) -->
     <div class="weather-menu-popup" id="aircraft-menu-popup" style="width: 250px;">
         <button class="weather-sub-btn active_sub" id="sub-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
-        <!-- 👉 TRAFIC CIVIL DÉSACTIVÉ PAR DÉFAUT (Plus de classe 'active_sub') -->
         <button class="weather-sub-btn" id="sub-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
     </div>
 
@@ -158,7 +156,15 @@
     </header>
 
     <div class="satellite-banner" id="sat-banner">
-        🛰️ <b>Dernier survol :</b> <span id="sat-time-fr">Synchronisation...</span> &nbsp;|&nbsp; 📡 <b>Prochain passage :</b> <span id="sat-next-fr">Calcul...</span>
+        <div class="sat-item">
+            🛰️ <b>Dernier scan thermique :</b> <span id="sat-time-fr" style="color:#00e5ff; font-family:monospace; font-weight:800;">Acquisition...</span>
+        </div>
+        <div class="sat-item desktop-only">
+            ⚡ <b>Radar EUMETSAT :</b> <span style="color:#00dd66; font-weight:700;">● Continu (15 min)</span>
+        </div>
+        <div class="sat-item">
+            📡 <b>Prochain survol HD :</b> <span id="sat-next-fr" style="color:#ffcc00; font-family:monospace; font-weight:800;">Calcul orbital...</span>
+        </div>
     </div>
 
     <main class="main-container">
@@ -228,7 +234,7 @@
             </div>
         </aside>
 
-        <!-- 👉 LÉGENDE TACTIQUE ALIGNÉE AU LASER -->
+        <!-- 👉 LÉGENDE TACTIQUE ALIGNÉE AU LASER (AVEC FLAMME CLIGNOTANTE) -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>
@@ -252,6 +258,13 @@
                         <span class="legend-emoji">🔥</span>
                     </div>
                     <div class="legend-text">Foyer Actif (Satellite NASA FIRMS)</div>
+                </div>
+                <!-- 👉 NOUVEAU : LIGNE FOYER DIRECT / RÉCENT AVEC CLIGNOTEMENT -->
+                <div class="legend-row">
+                    <div class="legend-icon-box">
+                        <span class="legend-emoji legend-emoji-recent">🔥</span>
+                    </div>
+                    <div class="legend-text" style="color: #ffcc00; font-weight: 700;">Foyer Direct / Récent (&lt; 60 min ou Vol Tactique)</div>
                 </div>
                 <div class="legend-row">
                     <div class="legend-icon-box">

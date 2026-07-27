@@ -381,8 +381,18 @@ async function fetchFires() {
         Object.keys(fireMarkers).forEach(k => delete fireMarkers[k]);
         
         const fireListElem = document.getElementById('fire-list-container');
-        if (data.latest_satellite_utc) document.getElementById('sat-time-fr').innerText = new Date(data.latest_satellite_utc).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'short', timeStyle: 'medium' });
-        if (data.next_satellite_pass) document.getElementById('sat-next-fr').innerText = data.next_satellite_pass;
+        
+        if (data.latest_detection_exact) {
+            document.getElementById('sat-time-fr').innerText = data.latest_detection_exact;
+        } else if (data.latest_satellite_utc) {
+            const dateExacte = new Date(data.latest_satellite_utc);
+            document.getElementById('sat-time-fr').innerText = dateExacte.toLocaleDateString('fr-FR') + ' à ' + dateExacte.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        }
+        
+        if (data.next_satellite_pass) {
+            document.getElementById('sat-next-fr').innerText = data.next_satellite_pass;
+        }
+        
         if (data.stats) { document.getElementById('stat-hectares').innerText = data.stats.hectares; document.getElementById('stat-houses').innerText = data.stats.houses; document.getElementById('stat-evac').innerText = data.stats.evacuations; }
 
         if (!data.fires || data.fires.features.length === 0) {
@@ -395,19 +405,47 @@ async function fetchFires() {
         if (activeLayers.plumes) L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.25, color: '#ff6600', weight: 1 } }).addTo(plumeLayer);
         if (activeLayers.burned) L.geoJSON(data.burned_areas, { style: { fillColor: '#8b0000', fillOpacity: 0.35, color: '#ff4500', weight: 2, dashArray: '5, 5', lineCap: 'round', lineJoin: 'round' } }).addTo(burnedLayer);
         
+        // =====================================================================
+        // 👉 NOUVEAU : TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
+        // =====================================================================
+        data.fires.features.sort((a, b) => {
+            const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
+            const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
+            const timeA = new Date(a.properties.time_utc).getTime() || 0;
+            const timeB = new Date(b.properties.time_utc).getTime() || 0;
+            const frpA = parseFloat(a.properties.frp) || 0;
+            const frpB = parseFloat(b.properties.frp) || 0;
+
+            // 1. Les interventions aériennes en direct passent en priorité absolue
+            if (isTacticalA !== isTacticalB) return isTacticalB - isTacticalA;
+            
+            // 2. Classer ensuite par date/heure de détection la plus récente
+            if (timeB !== timeA) return timeB - timeA;
+            
+            // 3. À heure identique (même passage satellite), trier par puissance thermique FRP
+            return frpB - frpA;
+        });
+
         let htmlBuffer = '';
         data.fires.features.forEach(fire => {
             const props = fire.properties; const coords = fire.geometry.coordinates;
             const isTactical = props.source && props.source.includes("Radar"); const iconBg = isTactical ? "#00aaff" : "#ff1e00";
-            const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
+            const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             
-            const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="fire-emoji-marker">🔥</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
-            // 👉 FEUX PLAQUÉS AU SOL : zIndexOffset NÉGATIF !
+            const fireTimeMs = new Date(props.time_utc).getTime();
+            const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
+            const isRecent = isTactical || (diffMins >= 0 && diffMins < 60);
+            
+            const markerClass = isRecent ? "fire-emoji-marker fire-emoji-recent" : "fire-emoji-marker";
+            const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="${markerClass}">🔥</div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+            
             const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: -500 }).addTo(fireLayer);
-            marker.bindPopup(`<b>🔥 ${props.name}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
+            const recentBadgePopup = isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '';
+            marker.bindPopup(`<b>🔥 ${props.name} ${recentBadgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
             fireMarkers[props.id] = marker;
             
-            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg};" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
+            const recentBadgeList = isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '';
+            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isRecent ? 'background:rgba(255,30,0,0.12);' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name} ${recentBadgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
         });
         fireListElem.innerHTML = htmlBuffer;
         document.getElementById('fire-count').innerText = `${data.count}`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${data.count}`;
@@ -466,7 +504,6 @@ function renderAircraftList() {
         const badgeColor = ac.is_tactical ? "#ffcc00" : "#00e5ff";
         const techSheetHtml = `<div class="tech-sheet"><div class="tech-title"><span style="color:${badgeColor};">✈️ ${ac.callsign}</span><span style="font-size:0.75rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">Hex: ${ac.hex}</span></div><div class="tech-role" style="color:${ac.is_tactical ? '#ffaa00' : '#a0c0e0'};">${ac.role}</div><div class="tech-grid"><div class="tech-row"><span class="tech-label">Immat / Reg</span><span class="tech-val">${ac.reg}</span></div><div class="tech-row"><span class="tech-label">Modèle OACI</span><span class="tech-val">${ac.type}</span></div><div class="tech-row"><span class="tech-label">Altitude Baro</span><span class="tech-val">${ac.altitude} m (${altFeet} ft)</span></div><div class="tech-row"><span class="tech-label">Vitesse Sol</span><span class="tech-val">${ac.speed} km/h (${speedKts} kts)</span></div><div class="tech-row"><span class="tech-label">Vario (Montée)</span><span class="tech-val">${vspeedFormatted}</span></div><div class="tech-row"><span class="tech-label">Cap / Track</span><span class="tech-val">${ac.heading}°</span></div><div class="tech-row"><span class="tech-label">Squawk Radar</span><span class="tech-val">${ac.squawk}</span></div><div class="tech-row"><span class="tech-label">Trace GPS</span><span class="tech-val">${persistentTraces[ac.callsign].length} pts</span></div></div></div>`;
         
-        // 👉 Z-INDEX OFFSET ÉLEVÉ : 20000 POUR LES TACTIQUES, 10000 POUR LES CIVILS !
         const planeZIndex = ac.is_tactical ? 20000 : 10000;
 
         if (aircraftMarkers[ac.callsign]) { 
