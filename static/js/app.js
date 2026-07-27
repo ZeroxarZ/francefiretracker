@@ -24,6 +24,7 @@ const fireMarkers = {};
 let activePolylineOuter = null; let activePolylineCore = null;
 let selectedCallsign = null; let latestWeatherData = null;
 const persistentTraces = {};
+let latestAircraftData = [];
 
 const MAJOR_CITIES = [
     { name: "Paris", lat: 48.8566, lon: 2.3522, major: true },
@@ -42,6 +43,46 @@ const MAJOR_CITIES = [
     { name: "Avignon", lat: 43.9493, lon: 4.8055, major: false },
     { name: "Biscarrosse", lat: 44.3900, lon: -1.1600, major: false }
 ];
+
+function openRightDrawer() {
+    document.getElementById('right-drawer').classList.add('open');
+    document.getElementById('drawer-backdrop').classList.remove('hidden');
+}
+function closeRightDrawer() {
+    document.getElementById('right-drawer').classList.remove('open');
+    document.getElementById('drawer-backdrop').classList.add('hidden');
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (window.innerWidth <= 1024) {
+        setTimeout(() => {
+            const banner = document.getElementById('pwa-install-banner');
+            if (banner && !localStorage.getItem('pwa_dismissed')) {
+                banner.classList.remove('hidden');
+            }
+        }, 3000);
+    }
+});
+
+async function installPWA() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        console.log('✅ PWA installée par l’utilisateur');
+    }
+    deferredPrompt = null;
+    closePWABanner();
+}
+
+function closePWABanner() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.add('hidden');
+    localStorage.setItem('pwa_dismissed', 'true');
+}
 
 function loadCityLabels() {
     cityLayer.clearLayers();
@@ -129,25 +170,95 @@ function toggleSection(sectionName) {
 
 function switchMapStyle() {
     const btn = document.getElementById('btn-map-switch');
-    if (currentMapMode === 'dark') { map.removeLayer(darkTile); satTile.addTo(map); currentMapMode = 'sat'; btn.innerText = "🗺️ Satellite HD"; btn.style.background = "linear-gradient(135deg, #2b1f15, #614023)"; } else { map.removeLayer(satTile); darkTile.addTo(map); currentMapMode = 'dark'; btn.innerText = "🗺️ Carte Noire"; btn.style.background = "linear-gradient(135deg, #1b2838, #2a3f5f)"; }
-}
-
-const activeLayers = { aircraft: true, airports: true, cities: false, fires: true, burned: true, plumes: false, weather_wind: false, weather_rain: false };
-function toggleLayer(layerName) {
-    activeLayers[layerName] = !activeLayers[layerName]; const btn = document.getElementById(`btn-${layerName}`);
-    if (activeLayers[layerName]) {
-        btn.classList.add('active');
-        if (layerName === 'aircraft') map.addLayer(aircraftLayer); if (layerName === 'airports') map.addLayer(airportLayer); if (layerName === 'cities') map.addLayer(cityLayer); if (layerName === 'fires') map.addLayer(fireLayer); if (layerName === 'burned') map.addLayer(burnedLayer); if (layerName === 'plumes') map.addLayer(plumeLayer); 
-    } else {
-        btn.classList.remove('active');
-        if (layerName === 'aircraft') map.removeLayer(aircraftLayer); if (layerName === 'airports') map.removeLayer(airportLayer); if (layerName === 'cities') map.removeLayer(cityLayer); if (layerName === 'fires') map.removeLayer(fireLayer); if (layerName === 'burned') map.removeLayer(burnedLayer); if (layerName === 'plumes') map.removeLayer(plumeLayer); 
+    const drawerBtn = document.getElementById('drawer-btn-map-switch');
+    if (currentMapMode === 'dark') { 
+        map.removeLayer(darkTile); satTile.addTo(map); currentMapMode = 'sat'; 
+        if (btn) { btn.innerText = "🗺️ Satellite HD"; btn.style.background = "linear-gradient(135deg, #2b1f15, #614023)"; }
+        if (drawerBtn) { drawerBtn.innerText = "🗺️ Satellite HD"; drawerBtn.style.background = "linear-gradient(135deg, #2b1f15, #614023)"; }
+    } else { 
+        map.removeLayer(satTile); darkTile.addTo(map); currentMapMode = 'dark'; 
+        if (btn) { btn.innerText = "🗺️ Carte Sombre"; btn.style.background = "linear-gradient(135deg, #1b2838, #2a3f5f)"; }
+        if (drawerBtn) { drawerBtn.innerText = "🗺️ Carte Sombre"; drawerBtn.style.background = "linear-gradient(135deg, #1b2838, #2a3f5f)"; }
     }
 }
 
-function toggleWeatherMenu() { document.getElementById('weather-menu-popup').classList.toggle('show'); }
-window.onclick = function(e) { if (!e.target.matches('#btn-weather-main')) { const p = document.getElementById('weather-menu-popup'); if (p && p.classList.contains('show')) p.classList.remove('show'); } }
+const activeLayers = { 
+    aircraft_tactical: true, 
+    aircraft_civil: false, 
+    airports: true, 
+    cities: false, 
+    fires: true, 
+    burned: true, 
+    plumes: false, 
+    weather_wind: false, 
+    weather_rain: false 
+};
 
-// 👉 RÉCUPÉRATION DU RADAR NUAGES PLUIE EN TEMPS RÉEL (AVEC BLOCAGE ANTI-ERREUR DU ZOOM !)
+function toggleLayer(layerName) {
+    activeLayers[layerName] = !activeLayers[layerName]; 
+    const btn = document.getElementById(`btn-${layerName}`);
+    const drawerBtn = document.getElementById(`drawer-btn-${layerName}`);
+    if (activeLayers[layerName]) {
+        if (btn) btn.classList.add('active');
+        if (drawerBtn) drawerBtn.classList.add('active');
+        if (layerName === 'airports') map.addLayer(airportLayer); if (layerName === 'cities') map.addLayer(cityLayer); if (layerName === 'fires') map.addLayer(fireLayer); if (layerName === 'burned') map.addLayer(burnedLayer); if (layerName === 'plumes') map.addLayer(plumeLayer); 
+    } else {
+        if (btn) btn.classList.remove('active');
+        if (drawerBtn) drawerBtn.classList.remove('active');
+        if (layerName === 'airports') map.removeLayer(airportLayer); if (layerName === 'cities') map.removeLayer(cityLayer); if (layerName === 'fires') map.removeLayer(fireLayer); if (layerName === 'burned') map.removeLayer(burnedLayer); if (layerName === 'plumes') map.removeLayer(plumeLayer); 
+    }
+}
+
+function toggleMenuPopup(e, popupId, otherPopupId) {
+    if (e) e.stopPropagation();
+    const popup = document.getElementById(popupId);
+    const other = document.getElementById(otherPopupId);
+    if (other && other.classList.contains('show')) other.classList.remove('show');
+    
+    if (e && e.currentTarget && window.innerWidth > 1024) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        popup.style.left = `${rect.left}px`;
+        popup.style.top = `${rect.bottom + 6}px`;
+        popup.style.transform = 'none';
+    } else {
+        popup.style.left = '50%';
+        popup.style.top = '65px';
+        popup.style.transform = 'translateX(-50%)';
+    }
+    popup.classList.toggle('show');
+}
+function toggleAircraftMenu(e) { toggleMenuPopup(e, 'aircraft-menu-popup', 'weather-menu-popup'); }
+function toggleWeatherMenu(e) { toggleMenuPopup(e, 'weather-menu-popup', 'aircraft-menu-popup'); }
+
+window.addEventListener('click', function(e) { 
+    if (!e.target.matches('#btn-weather-main') && !e.target.closest('#weather-menu-popup')) { 
+        const p = document.getElementById('weather-menu-popup'); 
+        if (p && p.classList.contains('show')) p.classList.remove('show'); 
+    }
+    if (!e.target.matches('#btn-aircraft-main') && !e.target.closest('#aircraft-menu-popup')) { 
+        const p = document.getElementById('aircraft-menu-popup'); 
+        if (p && p.classList.contains('show')) p.classList.remove('show'); 
+    }
+});
+
+function toggleAircraftSubLayer(type) {
+    const key = `aircraft_${type}`;
+    activeLayers[key] = !activeLayers[key];
+    
+    const btn = document.getElementById(`sub-btn-${type}`);
+    const drawerBtn = document.getElementById(`drawer-btn-${type}`);
+    
+    if (activeLayers[key]) {
+        if (btn) btn.classList.add('active_sub');
+        if (drawerBtn) drawerBtn.classList.add('active');
+    } else {
+        if (btn) btn.classList.remove('active_sub');
+        if (drawerBtn) drawerBtn.classList.remove('active');
+    }
+    
+    renderAircraftList();
+}
+
 async function fetchRainRadar() {
     try {
         const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
@@ -158,9 +269,9 @@ async function fetchRainRadar() {
             
             const radarTile = L.tileLayer(`https://tilecache.rainviewer.com${latestFrame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
                 opacity: 0.75,
-                maxNativeZoom: 7, // 👉 SEUIL DE SÉCURITÉ : Bloque les requêtes au zoom 7. Élimine 100% des images d'erreur noires !
-                maxZoom: 18,      // Au-delà du zoom 7, Leaflet étire intelligemment les nuages sans interroger le serveur
-                errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // Pixel 100% transparent en bouclier
+                maxNativeZoom: 7,
+                maxZoom: 18,
+                errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
                 zIndex: 400
             });
             radarTile.addTo(rainRadarLayer);
@@ -171,7 +282,15 @@ async function fetchRainRadar() {
 function toggleWeatherSubLayer(type) {
     const key = `weather_${type}`; activeLayers[key] = !activeLayers[key];
     const btn = document.getElementById(`sub-btn-${type}`);
-    if (activeLayers[key]) { btn.classList.add('active_sub'); } else { btn.classList.remove('active_sub'); }
+    const drawerBtn = document.getElementById(`drawer-btn-${type}`);
+    
+    if (activeLayers[key]) { 
+        if (btn) btn.classList.add('active_sub'); 
+        if (drawerBtn) drawerBtn.classList.add('active');
+    } else { 
+        if (btn) btn.classList.remove('active_sub'); 
+        if (drawerBtn) drawerBtn.classList.remove('active');
+    }
     
     if (type === 'rain') {
         if (activeLayers.weather_rain) {
@@ -283,7 +402,8 @@ async function fetchFires() {
             const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' });
             
             const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="fire-emoji-marker">🔥</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
-            const marker = L.marker([coords[1], coords[0]], { icon: fireIcon }).addTo(fireLayer);
+            // 👉 FEUX PLAQUÉS AU SOL : zIndexOffset NÉGATIF !
+            const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: -500 }).addTo(fireLayer);
             marker.bindPopup(`<b>🔥 ${props.name}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
             fireMarkers[props.id] = marker;
             
@@ -297,40 +417,101 @@ async function fetchFires() {
 
 async function fetchAircraft() {
     try {
-        const res = await fetch('/api/aircraft'); const data = await res.json();
-        const aircraftListElem = document.getElementById('aircraft-list-container');
-        if (!data.aircraft || data.aircraft.length === 0) {
-            aircraftListElem.innerHTML = `<div class="card-item">Aucun avion en vol dans le secteur.</div>`;
-            document.getElementById('aircraft-count').innerText = `0`; if (document.getElementById('tab-count-aircraft')) document.getElementById('tab-count-aircraft').innerText = `0`;
+        const res = await fetch('/api/aircraft', { cache: 'no-store' }); 
+        const data = await res.json();
+        latestAircraftData = data.aircraft || [];
+        renderAircraftList();
+    } catch (err) {}
+}
+
+function renderAircraftList() {
+    const aircraftListElem = document.getElementById('aircraft-list-container');
+    if (!latestAircraftData || latestAircraftData.length === 0) {
+        aircraftListElem.innerHTML = `<div class="card-item">Aucun avion en vol dans le secteur.</div>`;
+        document.getElementById('aircraft-count').innerText = `0`; 
+        if (document.getElementById('tab-count-aircraft')) document.getElementById('tab-count-aircraft').innerText = `0`;
+        return;
+    }
+    
+    const activeCallsigns = new Set(); 
+    let htmlBuffer = '';
+    let visibleCount = 0;
+    let visibleTactical = 0;
+    
+    latestAircraftData.forEach(ac => {
+        const shouldShow = ac.is_tactical ? activeLayers.aircraft_tactical : activeLayers.aircraft_civil;
+        if (!shouldShow) {
+            if (aircraftMarkers[ac.callsign]) {
+                aircraftLayer.removeLayer(aircraftMarkers[ac.callsign]);
+                delete aircraftMarkers[ac.callsign];
+            }
             return;
         }
         
-        const activeCallsigns = new Set(); let htmlBuffer = '';
-        data.aircraft.forEach(ac => {
-            activeCallsigns.add(ac.callsign); const icon = getPlaneIcon(ac.heading, ac.is_tactical, ac.role, ac.type);
-            if (!persistentTraces[ac.callsign]) { persistentTraces[ac.callsign] = ac.trail && ac.trail.length > 0 ? [...ac.trail] : [[ac.lat, ac.lon]]; } else {
-                const lastPt = persistentTraces[ac.callsign][persistentTraces[ac.callsign].length - 1];
-                if (Math.abs(lastPt[0] - ac.lat) > 0.0001 || Math.abs(lastPt[1] - ac.lon) > 0.0001) persistentTraces[ac.callsign].push([ac.lat, ac.lon]);
-            }
-            
-            const altFeet = Math.round(ac.altitude * 3.28084); const speedKts = Math.round(ac.speed / 1.852);
-            const vspeedFormatted = ac.vspeed ? `${ac.vspeed > 0 ? '+' : ''}${ac.vspeed} ft/min` : 'N/A (Palier)';
-            const badgeColor = ac.is_tactical ? "#ffcc00" : "#00e5ff";
-            const techSheetHtml = `<div class="tech-sheet"><div class="tech-title"><span style="color:${badgeColor};">✈️ ${ac.callsign}</span><span style="font-size:0.75rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">Hex: ${ac.hex}</span></div><div class="tech-role" style="color:${ac.is_tactical ? '#ffaa00' : '#a0c0e0'};">${ac.role}</div><div class="tech-grid"><div class="tech-row"><span class="tech-label">Immat / Reg</span><span class="tech-val">${ac.reg}</span></div><div class="tech-row"><span class="tech-label">Modèle OACI</span><span class="tech-val">${ac.type}</span></div><div class="tech-row"><span class="tech-label">Altitude Baro</span><span class="tech-val">${ac.altitude} m (${altFeet} ft)</span></div><div class="tech-row"><span class="tech-label">Vitesse Sol</span><span class="tech-val">${ac.speed} km/h (${speedKts} kts)</span></div><div class="tech-row"><span class="tech-label">Vario (Montée)</span><span class="tech-val">${vspeedFormatted}</span></div><div class="tech-row"><span class="tech-label">Cap / Track</span><span class="tech-val">${ac.heading}°</span></div><div class="tech-row"><span class="tech-label">Squawk Radar</span><span class="tech-val">${ac.squawk}</span></div><div class="tech-row"><span class="tech-label">Trace GPS</span><span class="tech-val">${persistentTraces[ac.callsign].length} pts</span></div></div></div>`;
-            
-            if (aircraftMarkers[ac.callsign]) { aircraftMarkers[ac.callsign].setLatLng([ac.lat, ac.lon]); aircraftMarkers[ac.callsign].setIcon(icon); aircraftMarkers[ac.callsign].setPopupContent(techSheetHtml); } else {
-                const marker = L.marker([ac.lat, ac.lon], { icon: icon }).addTo(aircraftLayer);
-                marker.bindPopup(techSheetHtml); marker.on('click', () => { selectAircraft(ac.callsign, ac.lat, ac.lon, persistentTraces[ac.callsign], ac.is_tactical, ac.hex); });
-                aircraftMarkers[ac.callsign] = marker;
-            }
-            
-            htmlBuffer += `<div class="card-item ${selectedCallsign === ac.callsign ? 'selected' : ''}" style="${ac.is_tactical ? 'border-left-color:#ffcc00; background:rgba(255,180,0,0.08);' : ''}" onclick="selectAircraft('${ac.callsign}', ${ac.lat}, ${ac.lon}, persistentTraces['${ac.callsign}'], ${ac.is_tactical}, '${ac.hex}')"><div class="card-header"><span style="color:${badgeColor}; font-weight:700;">✈️ ${ac.callsign}</span><span>${ac.speed} km/h</span></div><div class="card-details"><span>${ac.role} (${ac.type})</span><span>Alt: ${ac.altitude}m | Cap: ${ac.heading}°</span></div></div>`;
-        });
+        visibleCount++;
+        if (ac.is_tactical) visibleTactical++;
+        activeCallsigns.add(ac.callsign); 
+        
+        const icon = getPlaneIcon(ac.heading, ac.is_tactical, ac.role, ac.type);
+        if (!persistentTraces[ac.callsign]) { 
+            persistentTraces[ac.callsign] = ac.trail && ac.trail.length > 0 ? [...ac.trail] : [[ac.lat, ac.lon]]; 
+        } else {
+            const lastPt = persistentTraces[ac.callsign][persistentTraces[ac.callsign].length - 1];
+            if (Math.abs(lastPt[0] - ac.lat) > 0.0001 || Math.abs(lastPt[1] - ac.lon) > 0.0001) persistentTraces[ac.callsign].push([ac.lat, ac.lon]);
+        }
+        
+        const altFeet = Math.round(ac.altitude * 3.28084); 
+        const speedKts = Math.round(ac.speed / 1.852);
+        const vspeedFormatted = ac.vspeed ? `${ac.vspeed > 0 ? '+' : ''}${ac.vspeed} ft/min` : 'N/A (Palier)';
+        const badgeColor = ac.is_tactical ? "#ffcc00" : "#00e5ff";
+        const techSheetHtml = `<div class="tech-sheet"><div class="tech-title"><span style="color:${badgeColor};">✈️ ${ac.callsign}</span><span style="font-size:0.75rem; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">Hex: ${ac.hex}</span></div><div class="tech-role" style="color:${ac.is_tactical ? '#ffaa00' : '#a0c0e0'};">${ac.role}</div><div class="tech-grid"><div class="tech-row"><span class="tech-label">Immat / Reg</span><span class="tech-val">${ac.reg}</span></div><div class="tech-row"><span class="tech-label">Modèle OACI</span><span class="tech-val">${ac.type}</span></div><div class="tech-row"><span class="tech-label">Altitude Baro</span><span class="tech-val">${ac.altitude} m (${altFeet} ft)</span></div><div class="tech-row"><span class="tech-label">Vitesse Sol</span><span class="tech-val">${ac.speed} km/h (${speedKts} kts)</span></div><div class="tech-row"><span class="tech-label">Vario (Montée)</span><span class="tech-val">${vspeedFormatted}</span></div><div class="tech-row"><span class="tech-label">Cap / Track</span><span class="tech-val">${ac.heading}°</span></div><div class="tech-row"><span class="tech-label">Squawk Radar</span><span class="tech-val">${ac.squawk}</span></div><div class="tech-row"><span class="tech-label">Trace GPS</span><span class="tech-val">${persistentTraces[ac.callsign].length} pts</span></div></div></div>`;
+        
+        // 👉 Z-INDEX OFFSET ÉLEVÉ : 20000 POUR LES TACTIQUES, 10000 POUR LES CIVILS !
+        const planeZIndex = ac.is_tactical ? 20000 : 10000;
+
+        if (aircraftMarkers[ac.callsign]) { 
+            aircraftMarkers[ac.callsign].setLatLng([ac.lat, ac.lon]); 
+            aircraftMarkers[ac.callsign].setIcon(icon); 
+            aircraftMarkers[ac.callsign].setZIndexOffset(planeZIndex);
+            aircraftMarkers[ac.callsign].setPopupContent(techSheetHtml); 
+        } else {
+            const marker = L.marker([ac.lat, ac.lon], { icon: icon, zIndexOffset: planeZIndex }).addTo(aircraftLayer);
+            marker.bindPopup(techSheetHtml); 
+            marker.on('click', () => { selectAircraft(ac.callsign, ac.lat, ac.lon, persistentTraces[ac.callsign], ac.is_tactical, ac.hex); });
+            aircraftMarkers[ac.callsign] = marker;
+        }
+        
+        htmlBuffer += `<div class="card-item ${selectedCallsign === ac.callsign ? 'selected' : ''}" style="${ac.is_tactical ? 'border-left-color:#ffcc00; background:rgba(255,180,0,0.08);' : ''}" onclick="selectAircraft('${ac.callsign}', ${ac.lat}, ${ac.lon}, persistentTraces['${ac.callsign}'], ${ac.is_tactical}, '${ac.hex}')"><div class="card-header"><span style="color:${badgeColor}; font-weight:700;">✈️ ${ac.callsign}</span><span>${ac.speed} km/h</span></div><div class="card-details"><span>${ac.role} (${ac.type})</span><span>Alt: ${ac.altitude}m | Cap: ${ac.heading}°</span></div></div>`;
+    });
+    
+    if (visibleCount === 0) {
+        aircraftListElem.innerHTML = `<div class="card-item">Aucun avion affiché avec les filtres actuels.</div>`;
+    } else {
         aircraftListElem.innerHTML = htmlBuffer;
-        Object.keys(aircraftMarkers).forEach(callsign => { if (!activeCallsigns.has(callsign)) { aircraftLayer.removeLayer(aircraftMarkers[callsign]); delete aircraftMarkers[callsign]; } });
-        document.getElementById('aircraft-count').innerText = `${data.tactical_count} tactique / ${data.total_count}`; if (document.getElementById('tab-count-aircraft')) document.getElementById('tab-count-aircraft').innerText = `${data.total_count}`;
-        if (selectedCallsign && persistentTraces[selectedCallsign] && activePolylineOuter && activePolylineCore) { activePolylineOuter.setLatLngs(persistentTraces[selectedCallsign]); activePolylineCore.setLatLngs(persistentTraces[selectedCallsign]); }
-    } catch (err) {}
+    }
+    
+    Object.keys(aircraftMarkers).forEach(callsign => { 
+        if (!activeCallsigns.has(callsign)) { 
+            aircraftLayer.removeLayer(aircraftMarkers[callsign]); 
+            delete aircraftMarkers[callsign]; 
+        } 
+    });
+    
+    document.getElementById('aircraft-count').innerText = `${visibleTactical} tactique / ${visibleCount}`; 
+    if (document.getElementById('tab-count-aircraft')) document.getElementById('tab-count-aircraft').innerText = `${visibleCount}`;
+    
+    if (selectedCallsign && persistentTraces[selectedCallsign] && activePolylineOuter && activePolylineCore) { 
+        if (activeCallsigns.has(selectedCallsign)) {
+            activePolylineOuter.setLatLngs(persistentTraces[selectedCallsign]); 
+            activePolylineCore.setLatLngs(persistentTraces[selectedCallsign]); 
+        } else {
+            map.removeLayer(activePolylineOuter);
+            map.removeLayer(activePolylineCore);
+            activePolylineOuter = null;
+            activePolylineCore = null;
+            selectedCallsign = null;
+        }
+    }
 }
 
 function hideLoader() {

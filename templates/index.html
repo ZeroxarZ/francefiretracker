@@ -23,7 +23,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://francefiretracker.me/">
     <meta name="twitter:title" content="France Fire Tracker | Suivi Tactique en Temps Réel">
-    <meta name="twitter:description" content="Carte interactive et radar en direct : feux de forêt, zones brûlées et canadairs en France.">
+    <meta name="twitter:description" content="Carte interactive et radar en direct : feux de forêt, périmètres de sécurité et canadairs en France.">
     <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/785/785116.png">
     
     <!-- 👉 CONFIGURATION PWA & NATIVE IOS / ANDROID -->
@@ -69,30 +69,81 @@
         </div>
     </div>
 
+    <!-- 👉 BANDEAU D'INSTALLATION AUTOMATIQUE PWA (MOBILE) -->
+    <div id="pwa-install-banner" class="pwa-install-banner hidden">
+        <div class="pwa-content">
+            <span>📲 <b>Installer l'application</b> pour un accès direct en plein écran !</span>
+            <div class="pwa-buttons">
+                <button id="btn-pwa-install" class="pwa-btn-install" onclick="installPWA()">Installer</button>
+                <button class="pwa-btn-close" onclick="closePWABanner()" title="Fermer">×</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 👉 BACKDROP DU MENU LATÉRAL DROIT (MOBILE) -->
+    <div id="drawer-backdrop" class="drawer-backdrop hidden" onclick="closeRightDrawer()"></div>
+
+    <!-- 👉 MENU LATÉRAL DROIT TACTILE (FILTRES & MÉTÉO MOBILE) -->
+    <aside id="right-drawer" class="right-drawer">
+        <div class="drawer-header">
+            <span>🎛️ FILTRES & MÉTÉO</span>
+            <button class="close-drawer-btn" onclick="closeRightDrawer()">×</button>
+        </div>
+        <div class="drawer-content">
+            <div class="drawer-section-label">Radar Aérien (Avions & Secours)</div>
+            <button class="drawer-item active" id="drawer-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
+            <!-- 👉 TRAFIC CIVIL DÉSACTIVÉ PAR DÉFAUT (Plus de classe 'active') -->
+            <button class="drawer-item" id="drawer-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
+
+            <div class="drawer-section-label" style="margin-top:14px;">Couches Cartographiques</div>
+            <button class="drawer-item active" id="drawer-btn-airports" onclick="toggleLayer('airports')">🛬 Bases & Aéroports</button>
+            <button class="drawer-item" id="drawer-btn-cities" onclick="toggleLayer('cities')">📍 Villes principales</button>
+            <button class="drawer-item active" id="drawer-btn-fires" onclick="toggleLayer('fires')">🔥 Foyers Actifs (NASA)</button>
+            <button class="drawer-item active" id="drawer-btn-burned" onclick="toggleLayer('burned')">🛡️ Zone de sécurité</button>
+            <button class="drawer-item" id="drawer-btn-plumes" onclick="toggleLayer('plumes')">💨 Panaches de fumée</button>
+
+            <div class="drawer-section-label" style="margin-top:14px;">Météo Opérationnelle</div>
+            <button class="drawer-item" id="drawer-btn-rain" onclick="toggleWeatherSubLayer('rain')">🌧️ Nuages & Pluie (Radar)</button>
+            <button class="drawer-item" id="drawer-btn-wind" onclick="toggleWeatherSubLayer('wind')">💨 Flux de Vent (Live)</button>
+
+            <div class="drawer-section-label" style="margin-top:14px;">Affichage</div>
+            <button class="drawer-item drawer-map-switch" id="drawer-btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Sombre</button>
+        </div>
+    </aside>
+
+    <!-- 👉 MENU AVIONS FLOTTANT (PC) -->
+    <div class="weather-menu-popup" id="aircraft-menu-popup" style="width: 250px;">
+        <button class="weather-sub-btn active_sub" id="sub-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
+        <!-- 👉 TRAFIC CIVIL DÉSACTIVÉ PAR DÉFAUT (Plus de classe 'active_sub') -->
+        <button class="weather-sub-btn" id="sub-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
+    </div>
+
+    <!-- 👉 MENU MÉTÉO FLOTTANT (PC) -->
+    <div class="weather-menu-popup" id="weather-menu-popup">
+        <button class="weather-sub-btn" id="sub-btn-rain" onclick="toggleWeatherSubLayer('rain')">🌧️ Nuages / Pluie</button>
+        <button class="weather-sub-btn" id="sub-btn-wind" onclick="toggleWeatherSubLayer('wind')">💨 Flux de Vent</button>
+    </div>
+
     <header class="hud-header">
-        <div class="brand">
-            <div class="brand-indicator"></div>
-            <span>FRANCE FIRE TRACKER</span>
+        <div class="mobile-header-top-row">
+            <div class="brand">
+                <div class="brand-indicator"></div>
+                <span>FRANCE FIRE TRACKER</span>
+            </div>
+            <button class="mobile-open-drawer-btn" id="btn-open-right-drawer" onclick="openRightDrawer()">🎛️ Filtres</button>
         </div>
         
         <div class="layer-filters">
-            <button class="filter-btn active" id="btn-aircraft" onclick="toggleLayer('aircraft')">✈️ Avions</button>
+            <button class="filter-btn active" id="btn-aircraft-main" onclick="toggleAircraftMenu(event)">✈️ Avions</button>
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
             <button class="filter-btn" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
             <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
             <button class="filter-btn active" id="btn-burned" onclick="toggleLayer('burned')">🛡️ Zone de sécurité</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
-            
-            <div class="weather-dropdown-container">
-                <button class="filter-btn" id="btn-weather-main" onclick="toggleWeatherMenu()">🌦️ Météo</button>
-                <div class="weather-menu-popup" id="weather-menu-popup">
-                    <button class="weather-sub-btn" id="sub-btn-rain" onclick="toggleWeatherSubLayer('rain')">🌧️ Nuages / Pluie</button>
-                    <button class="weather-sub-btn" id="sub-btn-wind" onclick="toggleWeatherSubLayer('wind')">💨 Flux de Vent</button>
-                </div>
-            </div>
+            <button class="filter-btn" id="btn-weather-main" onclick="toggleWeatherMenu(event)">🌦️ Météo</button>
             
             <span class="divider">|</span>
-            <button class="map-switch-btn" id="btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Noire</button>
+            <button class="map-switch-btn" id="btn-map-switch" onclick="switchMapStyle()">🗺️ Carte Sombre</button>
         </div>
 
         <div class="header-right-group">
@@ -135,11 +186,16 @@
                 </div>
             </div>
 
-            <div class="panel-section" id="panel-fires">
-                <div class="section-title desktop-only">
-                    <span>📊 Bilan Opérationnel</span>
+            <div class="panel-section" id="panel-fires" style="flex: 1;">
+                <div class="section-title desktop-only" onclick="toggleSection('fires')">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
+                        <div class="smoke-loading-spinner" id="smoke-data-loader" title="Acquisition données fumées..."></div>
+                    </div>
+                    <button class="collapse-btn" id="btn-collapse-fires">−</button>
                 </div>
-                <div class="stats-grid">
+                
+                <div class="stats-grid desktop-only" style="margin-bottom: 8px; flex-shrink: 0;">
                     <div class="stat-card">
                         <span class="stat-label">Hectares Impactés</span>
                         <span class="stat-val" id="stat-hectares">0 ha</span>
@@ -154,13 +210,6 @@
                     </div>
                 </div>
 
-                <div class="section-title desktop-only" onclick="toggleSection('fires')" style="margin-top: 6px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
-                        <div class="smoke-loading-spinner" id="smoke-data-loader" title="Acquisition données fumées..."></div>
-                    </div>
-                    <button class="collapse-btn" id="btn-collapse-fires">−</button>
-                </div>
                 <div id="fire-list-container" class="scrollable-list">
                     <div class="card-item">Acquisition satellites...</div>
                 </div>
@@ -171,7 +220,7 @@
                     <span>⚡ <b>ZeroxarZ</b> — Licence MIT</span>
                 </div>
                 <div class="footer-right">
-                    <a href="https://github.com/ZeroxarZ/francefiretracker" target="_blank" rel="noopener noreferrer" class="github-btn" title="Code source sur GitHub">
+                    <a href="https://github.com/ZeroxarZ" target="_blank" rel="noopener noreferrer" class="github-btn" title="Code source sur GitHub">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                         <span>GitHub</span>
                     </a>
@@ -179,6 +228,7 @@
             </div>
         </aside>
 
+        <!-- 👉 LÉGENDE TACTIQUE ALIGNÉE AU LASER -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>
@@ -186,28 +236,40 @@
             </div>
             <div class="legend-content" id="legend-items">
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: #ffcc00; box-shadow: 0 0 8px #ffcc00;"></span>
-                    <span>Aéronef Sécurité Civile & Militaire</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-dot" style="background: #ffcc00; box-shadow: 0 0 8px #ffcc00;"></span>
+                    </div>
+                    <div class="legend-text">Aéronef Sécurité Civile & Militaire</div>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: #00e5ff; box-shadow: 0 0 8px #00e5ff;"></span>
-                    <span>Trafic Civil / Commercial</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-dot" style="background: #00e5ff; box-shadow: 0 0 8px #00e5ff;"></span>
+                    </div>
+                    <div class="legend-text">Trafic Civil / Commercial</div>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-emoji">🔥</span>
-                    <span>Foyer Actif (Satellite NASA FIRMS)</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-emoji">🔥</span>
+                    </div>
+                    <div class="legend-text">Foyer Actif (Satellite NASA FIRMS)</div>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: rgba(139, 0, 0, 0.6); border: 2px dashed #ff4500;"></span>
-                    <span>Périmètre de sécurité (Lignes courbées)</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-dot" style="background: rgba(139, 0, 0, 0.6); border: 2px dashed #ff4500;"></span>
+                    </div>
+                    <div class="legend-text">Périmètre de sécurité (Lignes courbées)</div>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-dot" style="background: #00aaff; box-shadow: 0 0 8px #00aaff;"></span>
-                    <span>Zone d'Intervention / Largage (Air)</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-dot" style="background: #00aaff; box-shadow: 0 0 8px #00aaff;"></span>
+                    </div>
+                    <div class="legend-text">Zone d'Intervention / Largage (Air)</div>
                 </div>
                 <div class="legend-row">
-                    <span class="legend-emoji">✈️</span>
-                    <span>Aérodrome / Base Sécurité Civile</span>
+                    <div class="legend-icon-box">
+                        <span class="legend-emoji">✈️</span>
+                    </div>
+                    <div class="legend-text">Aérodrome / Base Sécurité Civile</div>
                 </div>
             </div>
         </div>
