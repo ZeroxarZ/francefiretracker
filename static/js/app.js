@@ -26,6 +26,7 @@ let selectedCallsign = null; let latestWeatherData = null;
 const persistentTraces = {};
 let latestAircraftData = [];
 let latestFiresData = null;
+let animId = null;
 
 const MAJOR_CITIES = [
     { name: "Paris", lat: 48.8566, lon: 2.3522, major: true },
@@ -44,6 +45,34 @@ const MAJOR_CITIES = [
     { name: "Avignon", lat: 43.9493, lon: 4.8055, major: false },
     { name: "Biscarrosse", lat: 44.3900, lon: -1.1600, major: false }
 ];
+
+const activeLayers = { 
+    aircraft_tactical: true, 
+    aircraft_civil: false, 
+    airports: true, 
+    cities: false, 
+    fires_active: true,
+    fires_extinguished: true,
+    burned: true, 
+    plumes: false, 
+    weather_wind: false, 
+    weather_rain: false 
+};
+
+// =====================================================================
+// ⚡ BOOSTER DE PERFORMANCE 60 FPS (OFFLOAD GPU & ARRÊT DES EFFETS AU DRAG)
+// =====================================================================
+const mapContainer = document.getElementById('map');
+
+map.on('movestart zoomstart', () => {
+    mapContainer.classList.add('is-moving');
+    if (animId) cancelAnimationFrame(animId);
+});
+
+map.on('moveend zoomend', () => {
+    mapContainer.classList.remove('is-moving');
+    if (activeLayers.weather_wind) startWeatherAnimation();
+});
 
 function openRightDrawer() {
     document.getElementById('right-drawer').classList.add('open');
@@ -182,19 +211,6 @@ function switchMapStyle() {
         if (drawerBtn) { drawerBtn.innerText = "🗺️ Carte Sombre"; drawerBtn.style.background = "linear-gradient(135deg, #1b2838, #2a3f5f)"; }
     }
 }
-
-const activeLayers = { 
-    aircraft_tactical: true, 
-    aircraft_civil: false, 
-    airports: true, 
-    cities: false, 
-    fires_active: true,
-    fires_extinguished: true,
-    burned: true, 
-    plumes: false, 
-    weather_wind: false, 
-    weather_rain: false 
-};
 
 function toggleLayer(layerName) {
     activeLayers[layerName] = !activeLayers[layerName]; 
@@ -353,7 +369,7 @@ function toggleWeatherSubLayer(type) {
 }
 
 const canvas = document.getElementById('weather-canvas'); const ctx = canvas.getContext('2d');
-let particles_wind = []; let animId = null; 
+let particles_wind = []; 
 let currentWindDir = 240; let currentWindSpeed = 15;
 
 function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 60; ctx.clearRect(0, 0, canvas.width, canvas.height); if (animId) initWeatherParticles(); }
@@ -421,6 +437,9 @@ async function fetchWeather() {
 }
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
+// =====================================================================
+// 👉 LES 3 ICÔNES VECTORIELLES SVG SUR MESURE (RENDU OPTIMAL PC & MOBILE)
+// =====================================================================
 function getFireSvgIcon(isExtinguished, isRecent) {
     if (isExtinguished) {
         const html = `<div class="fire-svg-wrapper extinguished"><svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="15" cy="15" r="13" fill="#1E232D" stroke="#4A5568" stroke-width="2"/><path d="M15 5C11.5 9.5 8 13.5 8 18C8 22.142 11.134 25.5 15 25.5C18.866 25.5 22 22.142 22 18C22 13.5 18.5 9.5 15 5Z" fill="#475569"/><path d="M15 12C13 15 11 17.5 11 20C11 22.209 12.791 24 15 24C17.209 24 19 22.209 19 20C19 17.5 17 15 15 12Z" fill="#64748B"/><circle cx="23" cy="23" r="7" fill="#10B981" stroke="#0A0C10" stroke-width="2"/><path d="M20 23L22 25L26 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
@@ -478,7 +497,6 @@ function renderFiresList() {
         return;
     }
     
-    // 👉 TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
     data.fires.features.sort((a, b) => {
         const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
         const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
@@ -517,7 +535,6 @@ function renderFiresList() {
         const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
         const isRecent = !isExtinguished && (isTactical || (diffMins >= 0 && diffMins < 60));
         
-        // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG
         const fireIcon = getFireSvgIcon(isExtinguished, isRecent);
         
         const zIdx = isExtinguished ? -800 : -500;
