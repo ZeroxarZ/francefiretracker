@@ -145,7 +145,6 @@
             <button class="filter-btn active" id="btn-aircraft-main" onclick="toggleAircraftMenu(event)">✈️ Avions</button>
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
             <button class="filter-btn" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
-            <!-- 👉 BOUTON FOYERS AVEC OUVERTURE DE SOUS-MENU -->
             <button class="filter-btn active" id="btn-fires-main" onclick="toggleFiresMenu(event)">🔥 Foyers</button>
             <button class="filter-btn active" id="btn-burned" onclick="toggleLayer('burned')">🛡️ Zone de sécurité</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
@@ -245,7 +244,7 @@
             </div>
         </aside>
 
-        <!-- 👉 LÉGENDE TACTIQUE 100% SVG FORCÉ -->
+        <!-- 👉 LÉGENDE TACTIQUE AVEC LES 3 NOUVELLES ICÔNES VECTORIELLES SVG -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>
@@ -264,23 +263,44 @@
                     </div>
                     <div class="legend-text">Trafic Civil / Commercial</div>
                 </div>
+                <!-- 1. Foyer Actif (Flamme 3 couches) -->
                 <div class="legend-row">
                     <div class="legend-icon-box">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#ff5e00" xmlns="http://www.w3.org/2000/svg"><path d="M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs><linearGradient id="leg_norm" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF1E00"/><stop offset="50%" stop-color="#FF5E00"/><stop offset="100%" stop-color="#FF9900"/></linearGradient></defs>
+                            <path d="M16 2C11 8 6 13.5 6 19.5C6 25.299 10.477 30 16 30C21.523 30 26 25.299 26 19.5C26 13.5 21 8 16 2Z" fill="url(#leg_norm)" stroke="rgba(0,0,0,0.5)" stroke-width="1"/>
+                            <path d="M16 11C13.5 15 11 18 11 21.5C11 24.538 13.239 27 16 27C18.761 27 21 24.538 21 21.5C21 18 18.5 15 16 11Z" fill="#FFCC00"/>
+                            <path d="M16 18C15 19.5 14 21 14 22.5C14 23.88 14.895 25 16 25C17.105 25 18 23.88 18 22.5C18 21 17 19.5 16 18Z" fill="#FFFFFF"/>
+                        </svg>
                     </div>
                     <div class="legend-text">Foyer Actif (Satellite NASA FIRMS)</div>
                 </div>
+                <!-- 2. Foyer Direct / Récent (Viseur Radar pulsant) -->
                 <div class="legend-row">
                     <div class="legend-icon-box">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#ff1e00" xmlns="http://www.w3.org/2000/svg" style="animation: blink_legend_fire 0.6s infinite alternate;"><path d="M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z"/></svg>
+                        <svg width="26" height="26" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: pulse_legend_radar 0.7s infinite alternate;">
+                            <defs><linearGradient id="leg_urg" x1="18" y1="4" x2="18" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF0000"/><stop offset="50%" stop-color="#FF3300"/><stop offset="100%" stop-color="#FF8800"/></linearGradient></defs>
+                            <circle cx="18" cy="19" r="16" stroke="#FF0000" stroke-width="2" stroke-dasharray="5 3" opacity="0.9"/>
+                            <circle cx="18" cy="19" r="12" stroke="#FF8800" stroke-width="1" opacity="0.5"/>
+                            <path d="M18 4C13 10 8 15.5 8 21.5C8 27.299 12.477 32 18 32C23.523 32 28 27.299 28 21.5C28 15.5 23 10 18 4Z" fill="url(#leg_urg)" stroke="#330000" stroke-width="1.5"/>
+                            <path d="M18 13C15.5 17 13 20 13 23.5C13 26.538 15.239 29 18 29C20.761 29 23 26.538 23 23.5C23 20 20.5 17 18 13Z" fill="#FFDD00"/>
+                            <path d="M18 20C17 21.5 16 23 16 24.5C16 25.88 16.895 27 18 27C19.105 27 20 25.88 20 24.5C20 23 19 21.5 18 20Z" fill="#FFFFFF"/>
+                        </svg>
                     </div>
                     <div class="legend-text" style="color: #ffcc00; font-weight: 700;">Foyer Direct / Récent (&lt; 60 min)</div>
                 </div>
+                <!-- 3. Foyer Éteint / Maîtrisé (Charcoal Shield avec Checkmark vert) -->
                 <div class="legend-row">
                     <div class="legend-icon-box">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#111318" stroke="#8a9ba8" stroke-width="1.2" xmlns="http://www.w3.org/2000/svg"><path d="M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z"/></svg>
+                        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="15" cy="15" r="13" fill="#1E232D" stroke="#4A5568" stroke-width="2"/>
+                            <path d="M15 5C11.5 9.5 8 13.5 8 18C8 22.142 11.134 25.5 15 25.5C18.866 25.5 22 22.142 22 18C22 13.5 18.5 9.5 15 5Z" fill="#475569"/>
+                            <path d="M15 12C13 15 11 17.5 11 20C11 22.209 12.791 24 15 24C17.209 24 19 22.209 19 20C19 17.5 17 15 15 12Z" fill="#64748B"/>
+                            <circle cx="23" cy="23" r="7" fill="#10B981" stroke="#0A0C10" stroke-width="2"/>
+                            <path d="M20 23L22 25L26 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </div>
-                    <div class="legend-text" style="color: #8a9ba8;">Foyer Éteint / Refroidi (1 à 7j)</div>
+                    <div class="legend-text" style="color: #8a9ba8;">Foyer Éteint / Maîtrisé (1 à 7j)</div>
                 </div>
                 <div class="legend-row">
                     <div class="legend-icon-box">

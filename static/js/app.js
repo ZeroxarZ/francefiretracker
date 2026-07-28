@@ -421,27 +421,19 @@ async function fetchWeather() {
 }
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
-// 👉 GÉNÉRATEUR D'ICÔNE VECTORIELLE SVG (GARANTIT LE NOIR ABSOLU SUR TOUS LES TÉLÉPHONES)
-const svgFlamePath = "M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z M12 19c-2.21 0-4-1.66-4-3.71 0-1.48.99-2.76 2.41-3.23.36-.12.76.08.9.43.14.36-.04.77-.39.9-.84.28-1.42 1.01-1.42 1.9 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2c0-.89-.58-1.62-1.42-1.9-.35-.13-.53-.54-.39-.9.14-.35.54-.55.9-.43 1.42.47 2.41 1.75 2.41 3.23 0 2.05-1.79 3.71-4 3.71z";
-
 function getFireSvgIcon(isExtinguished, isRecent) {
-    let fillColor = "#ff5e00"; 
-    let wrapperClass = "fire-svg-wrapper";
-    let size = 28;
-
     if (isExtinguished) {
-        fillColor = "#111318"; // Noir absolu pour éteint
-        wrapperClass += " extinguished";
-        size = 24;
-    } else if (isRecent) {
-        fillColor = "#ff1e00"; // Rouge urgent clignotant
-        wrapperClass += " recent-pulse";
-        size = 32;
+        const html = `<div class="fire-svg-wrapper extinguished"><svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="15" cy="15" r="13" fill="#1E232D" stroke="#4A5568" stroke-width="2"/><path d="M15 5C11.5 9.5 8 13.5 8 18C8 22.142 11.134 25.5 15 25.5C18.866 25.5 22 22.142 22 18C22 13.5 18.5 9.5 15 5Z" fill="#475569"/><path d="M15 12C13 15 11 17.5 11 20C11 22.209 12.791 24 15 24C17.209 24 19 22.209 19 20C19 17.5 17 15 15 12Z" fill="#64748B"/><circle cx="23" cy="23" r="7" fill="#10B981" stroke="#0A0C10" stroke-width="2"/><path d="M20 23L22 25L26 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+        return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [24, 24], iconAnchor: [12, 12] });
+    }
+    
+    if (isRecent) {
+        const html = `<div class="fire-svg-wrapper recent-pulse"><svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g_urg" x1="18" y1="4" x2="18" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF0000"/><stop offset="50%" stop-color="#FF3300"/><stop offset="100%" stop-color="#FF8800"/></linearGradient></defs><circle cx="18" cy="19" r="16" stroke="#FF0000" stroke-width="2" stroke-dasharray="5 3" opacity="0.9"/><circle cx="18" cy="19" r="12" stroke="#FF8800" stroke-width="1" opacity="0.5"/><path d="M18 4C13 10 8 15.5 8 21.5C8 27.299 12.477 32 18 32C23.523 32 28 27.299 28 21.5C28 15.5 23 10 18 4Z" fill="url(#g_urg)" stroke="#330000" stroke-width="1.5"/><path d="M18 13C15.5 17 13 20 13 23.5C13 26.538 15.239 29 18 29C20.761 29 23 26.538 23 23.5C23 20 20.5 17 18 13Z" fill="#FFDD00"/><path d="M18 20C17 21.5 16 23 16 24.5C16 25.88 16.895 27 18 27C19.105 27 20 25.88 20 24.5C20 23 19 21.5 18 20Z" fill="#FFFFFF"/></svg></div>`;
+        return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [34, 34], iconAnchor: [17, 17] });
     }
 
-    let strokeAttr = isExtinguished ? 'stroke="#8a9ba8" stroke-width="1.2"' : '';
-    const html = `<div class="${wrapperClass}"><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fillColor}" ${strokeAttr} xmlns="http://www.w3.org/2000/svg"><path d="${svgFlamePath}"/></svg></div>`;
-    return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [size, size], iconAnchor: [size/2, size/2] });
+    const html = `<div class="fire-svg-wrapper"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g_norm" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF1E00"/><stop offset="50%" stop-color="#FF5E00"/><stop offset="100%" stop-color="#FF9900"/></linearGradient></defs><path d="M16 2C11 8 6 13.5 6 19.5C6 25.299 10.477 30 16 30C21.523 30 26 25.299 26 19.5C26 13.5 21 8 16 2Z" fill="url(#g_norm)" stroke="rgba(0,0,0,0.5)" stroke-width="1"/><path d="M16 11C13.5 15 11 18 11 21.5C11 24.538 13.239 27 16 27C18.761 27 21 24.538 21 21.5C21 18 18.5 15 16 11Z" fill="#FFCC00"/><path d="M16 18C15 19.5 14 21 14 22.5C14 23.88 14.895 25 16 25C17.105 25 18 23.88 18 22.5C18 21 17 19.5 16 18Z" fill="#FFFFFF"/></svg></div>`;
+    return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [28, 28], iconAnchor: [14, 14] });
 }
 
 async function fetchFires() {
@@ -512,32 +504,31 @@ function renderFiresList() {
         const isTactical = props.source && props.source.includes("Radar"); 
         const isExtinguished = props.is_extinguished === true;
         
-        // 👉 FILTRAGE EN DIRECT SELON L'ÉTAT DES COUCHES
         if (isExtinguished && !activeLayers.fires_extinguished) return;
         if (!isExtinguished && !activeLayers.fires_active) return;
         
         visibleCount++;
         if (!isExtinguished) activeCount++;
         
-        const iconBg = isExtinguished ? "#333333" : (isTactical ? "#00aaff" : "#ff1e00");
+        const iconBg = isExtinguished ? "#4A5568" : (isTactical ? "#00aaff" : "#ff1e00");
         const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
         
         const fireTimeMs = new Date(props.time_utc).getTime();
         const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
         const isRecent = !isExtinguished && (isTactical || (diffMins >= 0 && diffMins < 60));
         
-        // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG SUR LA CARTE
+        // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG
         const fireIcon = getFireSvgIcon(isExtinguished, isRecent);
         
         const zIdx = isExtinguished ? -800 : -500;
         const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: zIdx }).addTo(fireLayer);
         
-        const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[⚫ ÉTEINT / ARCHIVE]</span>' : (isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
+        const badgePopup = isExtinguished ? '<span style="color:#10B981; font-size:0.75rem;">[🛡️ MAÎTRISÉ / ÉTEINT]</span>' : (isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
         marker.bindPopup(`<b>🔥 ${props.name} ${badgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
         fireMarkers[props.id] = marker;
         
-        const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">⚫ ÉTEINT</span>' : (isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
-        htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>${isExtinguished ? '⚫' : '🔥'} ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
+        const badgeList = isExtinguished ? '<span style="color:#10B981; font-size:0.65rem;">🛡️ MAÎTRISÉ</span>' : (isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
+        htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>${isExtinguished ? '🛡️' : '🔥'} ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
     });
     
     if (visibleCount === 0) {
