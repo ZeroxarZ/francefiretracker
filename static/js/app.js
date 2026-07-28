@@ -438,7 +438,7 @@ async function fetchWeather() {
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
 // =====================================================================
-// 👉 LES 3 ICÔNES VECTORIELLES SVG SUR MESURE (RENDU OPTIMAL PC & MOBILE)
+// 👉 LES 3 ICÔNES VECTORIELLES SVG ALLÉGÉES (ZÉRO CONFLIT D'ID DOM !)
 // =====================================================================
 function getFireSvgIcon(isExtinguished, isRecent) {
     if (isExtinguished) {
@@ -447,11 +447,11 @@ function getFireSvgIcon(isExtinguished, isRecent) {
     }
     
     if (isRecent) {
-        const html = `<div class="fire-svg-wrapper recent-pulse"><svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g_urg" x1="18" y1="4" x2="18" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF0000"/><stop offset="50%" stop-color="#FF3300"/><stop offset="100%" stop-color="#FF8800"/></linearGradient></defs><circle cx="18" cy="19" r="16" stroke="#FF0000" stroke-width="2" stroke-dasharray="5 3" opacity="0.9"/><circle cx="18" cy="19" r="12" stroke="#FF8800" stroke-width="1" opacity="0.5"/><path d="M18 4C13 10 8 15.5 8 21.5C8 27.299 12.477 32 18 32C23.523 32 28 27.299 28 21.5C28 15.5 23 10 18 4Z" fill="url(#g_urg)" stroke="#330000" stroke-width="1.5"/><path d="M18 13C15.5 17 13 20 13 23.5C13 26.538 15.239 29 18 29C20.761 29 23 26.538 23 23.5C23 20 20.5 17 18 13Z" fill="#FFDD00"/><path d="M18 20C17 21.5 16 23 16 24.5C16 25.88 16.895 27 18 27C19.105 27 20 25.88 20 24.5C20 23 19 21.5 18 20Z" fill="#FFFFFF"/></svg></div>`;
+        const html = `<div class="fire-svg-wrapper recent-pulse"><svg width="34" height="34" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="19" r="16" stroke="#FF0000" stroke-width="2" stroke-dasharray="5 3" opacity="0.9"/><circle cx="18" cy="19" r="12" stroke="#FF8800" stroke-width="1" opacity="0.5"/><path d="M18 4C13 10 8 15.5 8 21.5C8 27.299 12.477 32 18 32C23.523 32 28 27.299 28 21.5C28 15.5 23 10 18 4Z" fill="url(#g_urg)" stroke="#330000" stroke-width="1.5"/><path d="M18 13C15.5 17 13 20 13 23.5C13 26.538 15.239 29 18 29C20.761 29 23 26.538 23 23.5C23 20 20.5 17 18 13Z" fill="#FFDD00"/><path d="M18 20C17 21.5 16 23 16 24.5C16 25.88 16.895 27 18 27C19.105 27 20 25.88 20 24.5C20 23 19 21.5 18 20Z" fill="#FFFFFF"/></svg></div>`;
         return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [34, 34], iconAnchor: [17, 17] });
     }
 
-    const html = `<div class="fire-svg-wrapper"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g_norm" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#FF1E00"/><stop offset="50%" stop-color="#FF5E00"/><stop offset="100%" stop-color="#FF9900"/></linearGradient></defs><path d="M16 2C11 8 6 13.5 6 19.5C6 25.299 10.477 30 16 30C21.523 30 26 25.299 26 19.5C26 13.5 21 8 16 2Z" fill="url(#g_norm)" stroke="rgba(0,0,0,0.5)" stroke-width="1"/><path d="M16 11C13.5 15 11 18 11 21.5C11 24.538 13.239 27 16 27C18.761 27 21 24.538 21 21.5C21 18 18.5 15 16 11Z" fill="#FFCC00"/><path d="M16 18C15 19.5 14 21 14 22.5C14 23.88 14.895 25 16 25C17.105 25 18 23.88 18 22.5C18 21 17 19.5 16 18Z" fill="#FFFFFF"/></svg></div>`;
+    const html = `<div class="fire-svg-wrapper"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 2C11 8 6 13.5 6 19.5C6 25.299 10.477 30 16 30C21.523 30 26 25.299 26 19.5C26 13.5 21 8 16 2Z" fill="url(#g_norm)" stroke="rgba(0,0,0,0.5)" stroke-width="1"/><path d="M16 11C13.5 15 11 18 11 21.5C11 24.538 13.239 27 16 27C18.761 27 21 24.538 21 21.5C21 18 18.5 15 16 11Z" fill="#FFCC00"/><path d="M16 18C15 19.5 14 21 14 22.5C14 23.88 14.895 25 16 25C17.105 25 18 23.88 18 22.5C18 21 17 19.5 16 18Z" fill="#FFFFFF"/></svg></div>`;
     return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [28, 28], iconAnchor: [14, 14] });
 }
 
