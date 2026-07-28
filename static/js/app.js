@@ -405,9 +405,7 @@ async function fetchFires() {
         if (activeLayers.plumes) L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.25, color: '#ff6600', weight: 1 } }).addTo(plumeLayer);
         if (activeLayers.burned) L.geoJSON(data.burned_areas, { style: { fillColor: '#8b0000', fillOpacity: 0.35, color: '#ff4500', weight: 2, dashArray: '5, 5', lineCap: 'round', lineJoin: 'round' } }).addTo(burnedLayer);
         
-        // =====================================================================
-        // 👉 NOUVEAU : TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
-        // =====================================================================
+        // 👉 TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
         data.fires.features.sort((a, b) => {
             const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
             const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
@@ -416,36 +414,42 @@ async function fetchFires() {
             const frpA = parseFloat(a.properties.frp) || 0;
             const frpB = parseFloat(b.properties.frp) || 0;
 
-            // 1. Les interventions aériennes en direct passent en priorité absolue
             if (isTacticalA !== isTacticalB) return isTacticalB - isTacticalA;
-            
-            // 2. Classer ensuite par date/heure de détection la plus récente
             if (timeB !== timeA) return timeB - timeA;
-            
-            // 3. À heure identique (même passage satellite), trier par puissance thermique FRP
             return frpB - frpA;
         });
 
         let htmlBuffer = '';
         data.fires.features.forEach(fire => {
             const props = fire.properties; const coords = fire.geometry.coordinates;
-            const isTactical = props.source && props.source.includes("Radar"); const iconBg = isTactical ? "#00aaff" : "#ff1e00";
+            const isTactical = props.source && props.source.includes("Radar"); 
+            const isExtinguished = props.is_extinguished === true;
+            
+            const iconBg = isExtinguished ? "#333333" : (isTactical ? "#00aaff" : "#ff1e00");
             const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             
-            const fireTimeMs = new Date(props.time_utc).getTime();
-            const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
-            const isRecent = isTactical || (diffMins >= 0 && diffMins < 60);
+            let markerClass = "fire-emoji-marker";
+            if (isExtinguished) {
+                markerClass = "fire-emoji-extinguished";
+            } else {
+                const fireTimeMs = new Date(props.time_utc).getTime();
+                const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
+                if (isTactical || (diffMins >= 0 && diffMins < 60)) {
+                    markerClass = "fire-emoji-marker fire-emoji-recent";
+                }
+            }
             
-            const markerClass = isRecent ? "fire-emoji-marker fire-emoji-recent" : "fire-emoji-marker";
-            const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="${markerClass}">🔥</div>`, iconSize: [32, 32], iconAnchor: [16, 16] });
+            const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="${markerClass}">🔥</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
             
-            const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: -500 }).addTo(fireLayer);
-            const recentBadgePopup = isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '';
-            marker.bindPopup(`<b>🔥 ${props.name} ${recentBadgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
+            const zIdx = isExtinguished ? -800 : -500;
+            const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: zIdx }).addTo(fireLayer);
+            
+            const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[🟢 ÉTEINT / ARCHIVE]</span>' : (isTactical || (Date.now() - new Date(props.time_utc).getTime() < 3600000) ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
+            marker.bindPopup(`<b>🔥 ${props.name} ${badgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
             fireMarkers[props.id] = marker;
             
-            const recentBadgeList = isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '';
-            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isRecent ? 'background:rgba(255,30,0,0.12);' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name} ${recentBadgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
+            const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">🟢 ÉTEINT</span>' : (isTactical || (Date.now() - new Date(props.time_utc).getTime() < 3600000) ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
+            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
         });
         fireListElem.innerHTML = htmlBuffer;
         document.getElementById('fire-count').innerText = `${data.count}`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${data.count}`;
