@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- 👉 SEO STRATÉGIQUE & INDEXATION -->
     <title>France Fire Tracker | Carte en direct des Incendies & Avions</title>
     <meta name="description" content="Suivez en temps réel les incendies de forêt en France, les panaches de fumée et les rotations des avions de la Sécurité Civile (Canadair, Dash, Dragon) grâce aux satellites NASA et radar live.">
     <meta name="keywords" content="incendie france, feu de foret direct, carte feux france, canadair en direct, radar securite civile, feux gironde, nasa firms france, suivi incendie temps reel">
     <meta name="author" content="ZeroxarZ">
     <link rel="canonical" href="https://francefiretracker.me/">
 
-    <!-- 👉 OPEN GRAPH (FACEBOOK / DISCORD / LINKEDIN) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://francefiretracker.me/">
     <meta property="og:title" content="France Fire Tracker | Suivi Tactique en Temps Réel">
@@ -19,14 +17,12 @@
     <meta property="og:image" content="https://cdn-icons-png.flaticon.com/512/785/785116.png">
     <meta property="og:locale" content="fr_FR">
 
-    <!-- 👉 TWITTER CARDS -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://francefiretracker.me/">
     <meta name="twitter:title" content="France Fire Tracker | Suivi Tactique en Temps Réel">
     <meta name="twitter:description" content="Carte interactive et radar en direct : feux de forêt, périmètres de sécurité et canadairs en France.">
     <meta name="twitter:image" content="https://cdn-icons-png.flaticon.com/512/785/785116.png">
     
-    <!-- 👉 CONFIGURATION PWA & NATIVE IOS / ANDROID -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0a0c10">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -37,7 +33,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 
-    <!-- 👉 DONNÉES STRUCTURÉES GOOGLE (JSON-LD) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -62,7 +57,6 @@
 </head>
 <body>
 
-    <!-- 👉 BLOC DE DÉFINITIONS SVG GLOBAL (ZÉRO DOUBLON D'ID POUR MAXIMUM DE FPS SUR MOBILE !) -->
     <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
         <defs>
             <linearGradient id="g_norm" x1="16" y1="2" x2="16" y2="30" gradientUnits="userSpaceOnUse">
@@ -81,7 +75,6 @@
         </div>
     </div>
 
-    <!-- 👉 BANDEAU D'INSTALLATION AUTOMATIQUE PWA (MOBILE) -->
     <div id="pwa-install-banner" class="pwa-install-banner hidden">
         <div class="pwa-content">
             <span>📲 <b>Installer l'application</b> pour un accès direct en plein écran !</span>
@@ -92,10 +85,8 @@
         </div>
     </div>
 
-    <!-- 👉 BACKDROP DU MENU LATÉRAL DROIT (MOBILE) -->
     <div id="drawer-backdrop" class="drawer-backdrop hidden" onclick="closeRightDrawer()"></div>
 
-    <!-- 👉 MENU LATÉRAL DROIT TACTILE (FILTRES & MÉTÉO MOBILE) -->
     <aside id="right-drawer" class="right-drawer">
         <div class="drawer-header">
             <span>🎛️ FILTRES & MÉTÉO</span>
@@ -106,7 +97,6 @@
             <button class="drawer-item active" id="drawer-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
             <button class="drawer-item" id="drawer-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
 
-            <!-- 👉 SOUS-MENU MOBILE FOYERS & INCENDIES -->
             <div class="drawer-section-label" style="margin-top:14px;">Foyers & Incendies</div>
             <button class="drawer-item active" id="drawer-btn-fires_active" onclick="toggleFiresSubLayer('active')">🔥 Foyers Actifs (En cours)</button>
             <button class="drawer-item active" id="drawer-btn-fires_extinguished" onclick="toggleFiresSubLayer('extinguished')">⚫ Foyers Éteints / Archivés</button>
@@ -126,19 +116,16 @@
         </div>
     </aside>
 
-    <!-- 👉 MENU AVIONS FLOTTANT (PC) -->
     <div class="weather-menu-popup" id="aircraft-menu-popup" style="width: 250px;">
         <button class="weather-sub-btn active_sub" id="sub-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
         <button class="weather-sub-btn" id="sub-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
     </div>
 
-    <!-- 👉 NOUVEAU MENU FOYERS FLOTTANT (PC) -->
     <div class="weather-menu-popup" id="fires-menu-popup" style="width: 250px;">
         <button class="weather-sub-btn active_sub" id="sub-btn-fires_active" onclick="toggleFiresSubLayer('active')">🔥 Foyers Actifs (En cours)</button>
         <button class="weather-sub-btn active_sub" id="sub-btn-fires_extinguished" onclick="toggleFiresSubLayer('extinguished')">⚫ Foyers Éteints / Archivés</button>
     </div>
 
-    <!-- 👉 MENU MÉTÉO FLOTTANT (PC) -->
     <div class="weather-menu-popup" id="weather-menu-popup">
         <button class="weather-sub-btn" id="sub-btn-rain" onclick="toggleWeatherSubLayer('rain')">🌧️ Nuages / Pluie</button>
         <button class="weather-sub-btn" id="sub-btn-wind" onclick="toggleWeatherSubLayer('wind')">💨 Flux de Vent</button>
@@ -256,7 +243,6 @@
             </div>
         </aside>
 
-        <!-- 👉 LÉGENDE TACTIQUE AVEC LES 3 ICÔNES VECTORIELLES SVG SUR MESURE -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>

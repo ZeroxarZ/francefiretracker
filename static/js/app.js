@@ -59,9 +59,6 @@ const activeLayers = {
     weather_rain: false 
 };
 
-// =====================================================================
-// ⚡ BOOSTER DE PERFORMANCE 60 FPS (OFFLOAD GPU & ARRÊT DES EFFETS AU DRAG)
-// =====================================================================
 const mapContainer = document.getElementById('map');
 
 map.on('movestart zoomstart', () => {
@@ -102,7 +99,7 @@ async function installPWA() {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
-        console.log('✅ PWA installée par l’utilisateur');
+        console.log('PWA installée par l’utilisateur');
     }
     deferredPrompt = null;
     closePWABanner();
@@ -355,6 +352,15 @@ function toggleWeatherSubLayer(type) {
         if (btn) btn.classList.remove('active_sub'); 
         if (drawerBtn) drawerBtn.classList.remove('active');
     }
+
+    const mainBtn = document.getElementById('btn-weather-main');
+    if (mainBtn) {
+        if (activeLayers.weather_wind || activeLayers.weather_rain) {
+            mainBtn.classList.add('active');
+        } else {
+            mainBtn.classList.remove('active');
+        }
+    }
     
     if (type === 'rain') {
         if (activeLayers.weather_rain) {
@@ -437,9 +443,6 @@ async function fetchWeather() {
 }
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
-// =====================================================================
-// 👉 LES 3 ICÔNES VECTORIELLES SVG ALLÉGÉES (ZÉRO CONFLIT D'ID DOM !)
-// =====================================================================
 function getFireSvgIcon(isExtinguished, isRecent) {
     if (isExtinguished) {
         const html = `<div class="fire-svg-wrapper extinguished"><svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="15" cy="15" r="13" fill="#1E232D" stroke="#4A5568" stroke-width="2"/><path d="M15 5C11.5 9.5 8 13.5 8 18C8 22.142 11.134 25.5 15 25.5C18.866 25.5 22 22.142 22 18C22 13.5 18.5 9.5 15 5Z" fill="#475569"/><path d="M15 12C13 15 11 17.5 11 20C11 22.209 12.791 24 15 24C17.209 24 19 22.209 19 20C19 17.5 17 15 15 12Z" fill="#64748B"/><circle cx="23" cy="23" r="7" fill="#10B981" stroke="#0A0C10" stroke-width="2"/><path d="M20 23L22 25L26 20" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;

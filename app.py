@@ -26,12 +26,16 @@ TACTICAL_CALLSIGNS = [
     "HELIC", "HELI", "GIFF", "F-Z", "F-O", "F-PUMA", "MILAN", "PELIC", "TRACT", "TRACK", 
     "BENG", "ICAR", "ATLAS", "ABEL", "HORNET", "VANGUARD", "FIRE", "WATER", "SCOUT", 
     "BEAVER", "DASH", "CANADAIR", "BOMBER", "SUPERPUMA", "SDIS", "GIES",
-    "BLADE", "CTM", "RRR", "FAF", "FRB", "COTE", "F-RBAX"
+    "BLADE", "CTM", "RRR", "FAF", "FRB", "COTE", "F-RBAX", "RAFFUT"
 ]
 
 TACTICAL_TYPES = [
     "EC25", "AS33", "H225", "EC45", "BK17", "H145", "EC55", "S365", "AS36", 
     "AT8T", "CL2T", "CL41", "CL21", "DH8D", "A400", "C130", "C30J", "CN35", "C295"
+]
+
+TACTICAL_HEX = [
+    "3B7620"
 ]
 
 FRENCH_AIRPORTS = [
@@ -51,7 +55,7 @@ FRENCH_AIRPORTS = [
 ]
 
 CACHE_MEMORY = {}
-THREAD_POOL = ThreadPoolExecutor(max_workers=8)
+THREAD_POOL = ThreadPoolExecutor(max_workers=12)
 AIRCRAFT_TRAILS = {}
 
 def get_paris_time():
@@ -91,6 +95,26 @@ def fetch_url_safe(url, timeout=3.0):
         if res.status_code == 200: return res
     except Exception: pass
     return None
+
+def get_local_wind(lat, lon):
+    grid_lat = round(lat * 2.0) / 2.0
+    grid_lon = round(lon * 2.0) / 2.0
+    cache_key = f"wind_grid_{grid_lat}_{grid_lon}"
+    
+    def fetch_grid_wind():
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={grid_lat}&longitude={grid_lon}&current=wind_speed_10m,wind_direction_10m"
+        res = fetch_url_safe(url, timeout=2.0)
+        if res:
+            try:
+                data = res.json().get("current", {})
+                return {
+                    "speed": data.get("wind_speed_10m", 15.0),
+                    "dir": data.get("wind_direction_10m", 240.0)
+                }
+            except Exception: pass
+        return {"speed": 15.0, "dir": 240.0}
+        
+    return get_cached_data(cache_key, 900.0, fetch_grid_wind)
 
 def calculate_smoke_plume(lat, lon, wind_dir, wind_speed, frp=15.0):
     plume_dir = (wind_dir + 180) % 360
@@ -356,11 +380,14 @@ def get_trace(identifier):
         urls = [
             f"https://api.adsb.lol/v2/trace/{clean_id}",
             f"https://adsb.fi/api/v0/trace/{clean_id}",
+            f"https://api.airplanes.live/v2/trace/{clean_id}",
+            f"https://api.theairtraffic.com/v2/trace/{clean_id}",
+            f"https://api.adsb.one/v2/trace/{clean_id}",
             f"https://opensky-network.org/api/tracks/all?icao24={clean_id}&time=0"
         ]
         results = list(THREAD_POOL.map(lambda u: fetch_url_safe(u, timeout=3.5), urls))
         extracted_coords = []
-        for res in results[:2]:
+        for res in results[:5]:
             if res:
                 try:
                     data = res.json()
@@ -369,17 +396,26 @@ def get_trace(identifier):
                         ref_lat, ref_lon = None, None
                         for pt in trace_data:
                             if isinstance(pt, list) and len(pt) >= 3 and isinstance(pt[1], (int, float)) and isinstance(pt[2], (int, float)):
-                                if abs(pt[1]) > 1.0 and abs(pt[2]) > 1.0:
+                                if abs(pt[1]) > 5.0:
                                     ref_lat, ref_lon = pt[1], pt[2]
                                     extracted_coords.append([round(ref_lat, 4), round(ref_lon, 4)])
                                 elif ref_lat is not None and ref_lon is not None:
                                     ref_lat += pt[1]; ref_lon += pt[2]
                                     extracted_coords.append([round(ref_lat, 4), round(ref_lon, 4)])
-                        if len(extracted_coords) > 5: return extracted_coords
+                        clean_coords = []
+                        for pt in extracted_coords:
+                            if not clean_coords:
+                                clean_coords.append(pt)
+                            else:
+                                last = clean_coords[-1]
+                                dist = math.sqrt((last[0] - pt[0])**2 + (last[1] - pt[1])**2)
+                                if 0.0001 < dist < 1.0:
+                                    clean_coords.append(pt)
+                        if len(clean_coords) > 5: return clean_coords
                 except Exception: pass
-        if not extracted_coords and results[2]:
+        if not extracted_coords and results[5]:
             try:
-                for pt in results[2].json().get("path", []):
+                for pt in results[5].json().get("path", []):
                     if pt[1] and pt[2]: extracted_coords.append([round(pt[1], 4), round(pt[2], 4)])
             except Exception: pass
         return extracted_coords
@@ -392,11 +428,14 @@ def get_aircraft():
         urls = [
             f"https://adsb.fi/api/v0/lat/{FRANCE_CENTER['lat']}/lon/{FRANCE_CENTER['lon']}/dist/600",
             f"https://api.adsb.lol/v2/lat/{FRANCE_CENTER['lat']}/lon/{FRANCE_CENTER['lon']}/dist/600",
+            f"https://api.airplanes.live/v2/point/{FRANCE_CENTER['lat']}/{FRANCE_CENTER['lon']}/600",
+            f"https://api.theairtraffic.com/v2/point/{FRANCE_CENTER['lat']}/{FRANCE_CENTER['lon']}/600",
+            f"https://api.adsb.one/v2/point/{FRANCE_CENTER['lat']}/{FRANCE_CENTER['lon']}/600",
             "https://opensky-network.org/api/states/all?lamin=41.0&lomin=-5.5&lamax=51.5&lomax=10.0"
         ]
         results = list(THREAD_POOL.map(lambda u: fetch_url_safe(u, timeout=2.5), urls))
         
-        for res in results[:2]:
+        for res in results[:5]:
             if res:
                 try:
                     data = res.json()
@@ -414,9 +453,9 @@ def get_aircraft():
                             }
                 except Exception: pass
                 
-        if results[2]:
+        if results[5]:
             try:
-                for ac in results[2].json().get("states", []) or []:
+                for ac in results[5].json().get("states", []) or []:
                     callsign = (ac[1] or "INCONNU").strip().upper()
                     lon, lat = ac[5], ac[6]
                     if lat and lon and callsign not in aircraft_map:
@@ -432,7 +471,7 @@ def get_aircraft():
         for callsign, ac in aircraft_map.items():
             ac_type = (ac["type"] or "").strip().upper()
             reg_code = (ac["reg"] or "").strip().upper()
-            is_tactical = (any(callsign.startswith(p) or p in callsign for p in TACTICAL_CALLSIGNS) or any(ac_type == t or t in ac_type for t in TACTICAL_TYPES) or reg_code.startswith("F-RB") or reg_code.startswith("F-RA"))
+            is_tactical = (any(callsign.startswith(p) or p in callsign for p in TACTICAL_CALLSIGNS) or any(ac_type == t or t in ac_type for t in TACTICAL_TYPES) or any((ac["hex"] or "").upper() == h for h in TACTICAL_HEX) or reg_code.startswith("F-RB") or reg_code.startswith("F-RA"))
             role = "Trafic Civil / Surveillance"
             
             if is_tactical:
@@ -446,6 +485,7 @@ def get_aircraft():
                 elif "BLADE" in callsign or "A400" in ac_type: role = "Avion A400M Atlas"
                 elif "BENG" in callsign or "ICAR" in callsign: role = "Guet Aérien / Coordination"
                 elif "SAMU" in callsign or "RESCU" in callsign or "S365" in ac_type or "EC55" in ac_type: role = "Hélicoptère de Secours / SAMU"
+                elif "RAFFUT" in callsign or (ac["hex"] or "").upper() in TACTICAL_HEX: role = "Hélicoptère de Surveillance / Secours"
                 
                 trail_history = update_aircraft_trail(callsign, ac["lat"], ac["lon"])
                 aircraft_list.append({"callsign": callsign, "type": ac["type"], "role": role, "lat": round(ac["lat"], 4), "lon": round(ac["lon"], 4), "altitude": ac["alt"], "speed": ac["speed"], "heading": round(ac["heading"], 1), "is_tactical": True, "hex": ac["hex"], "reg": ac["reg"], "squawk": ac["squawk"], "vspeed": ac["vspeed"], "trail": trail_history})
@@ -460,10 +500,6 @@ def get_aircraft():
 @app.route("/api/fires")
 def get_fires():
     def fetch_all_fires():
-        w_data = get_cached_data(f"weather_{FRANCE_CENTER['lat']}_{FRANCE_CENTER['lon']}", 60, lambda: {"wind_speed": 15, "wind_dir": 240})
-        w_speed = w_data.get("wind_speed", 15)
-        w_dir = w_data.get("wind_dir", 240)
-        
         feeds_24h = [
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_NPP_VIIRS_C2_Europe_24h.csv",
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Europe_24h.csv",
@@ -500,7 +536,9 @@ def get_fires():
                             
                             intensity_label = "Critique / Sévère" if frp > 40 else "Foyer Actif" if frp > 15 else "Début de feu / Modéré"
                             features.append({"type": "Feature", "properties": {"id": f"NASA-{coord_key}", "name": f"Détection Satellite ({lat:.2f}, {lon:.2f})", "status": f"FRP: {frp:.1f} MW", "intensity": intensity_label, "frp": round(frp, 1), "time_utc": iso_utc, "source": "NASA FIRMS / VIIRS", "is_extinguished": False}, "geometry": {"type": "Point", "coordinates": [round(lon, 4), round(lat, 4)]}})
-                            plumes.append(calculate_smoke_plume(lat, lon, w_dir, w_speed, frp))
+                            
+                            local_w = get_local_wind(lat, lon)
+                            plumes.append(calculate_smoke_plume(lat, lon, local_w["dir"], local_w["speed"], frp))
                             fire_points.append([lon, lat])
                 except Exception: pass
 
@@ -539,7 +577,11 @@ def get_fires():
                     seen_coords_24h.add(coord_key)
                     features.append(ff_fire)
                     fire_points.append(ff_fire['geometry']['coordinates'])
-                    plumes.append(calculate_smoke_plume(ff_fire['geometry']['coordinates'][1], ff_fire['geometry']['coordinates'][0], w_dir, w_speed, frp=30.0))
+                    
+                    f_lat = ff_fire['geometry']['coordinates'][1]
+                    f_lon = ff_fire['geometry']['coordinates'][0]
+                    local_w = get_local_wind(f_lat, f_lon)
+                    plumes.append(calculate_smoke_plume(f_lat, f_lon, local_w["dir"], local_w["speed"], frp=30.0))
         except Exception: pass
 
         try:
@@ -550,7 +592,9 @@ def get_fires():
                         seen_coords_24h.add(coord_key)
                         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z")
                         features.append({"type": "Feature", "properties": {"id": f"TACTICAL-{coord_key}", "name": f"⚠️ Intervention ({ac['callsign']})", "status": "Largage / Surveillance", "intensity": "Détecté par vol", "frp": 25.0, "time_utc": now_utc, "source": f"Radar ({ac['callsign']})", "is_extinguished": False}, "geometry": {"type": "Point", "coordinates": [round(lon, 4), round(lat, 4)]}})
-                        plumes.append(calculate_smoke_plume(lat, lon, w_dir, w_speed, frp=25.0))
+                        
+                        local_w = get_local_wind(lat, lon)
+                        plumes.append(calculate_smoke_plume(lat, lon, local_w["dir"], local_w["speed"], frp=25.0))
                         fire_points.append([lon, lat])
         except Exception: pass
 
