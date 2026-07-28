@@ -464,7 +464,6 @@ def get_fires():
         w_speed = w_data.get("wind_speed", 15)
         w_dir = w_data.get("wind_dir", 240)
         
-        # Flux 24h (Actifs)
         feeds_24h = [
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_NPP_VIIRS_C2_Europe_24h.csv",
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Europe_24h.csv",
@@ -472,7 +471,6 @@ def get_fires():
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_Europe_24h.csv"
         ]
         
-        # Flux 7 jours (Archives pour détecter les feux éteints)
         feeds_7d = [
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_NPP_VIIRS_C2_Europe_7d.csv",
             "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Europe_7d.csv",
@@ -485,7 +483,6 @@ def get_fires():
         
         features = []; plumes = []; fire_points = []; seen_coords_24h = set(); seen_coords_7d = set(); latest_utc_iso = None
 
-        # 1. Feux actifs (24h)
         for res in results_24h:
             if res:
                 try:
@@ -507,7 +504,6 @@ def get_fires():
                             fire_points.append([lon, lat])
                 except Exception: pass
 
-        # 2. Feux éteints / refroidis (entre 1 et 7 jours)
         for res in results_7d:
             if res:
                 try:
@@ -535,7 +531,6 @@ def get_fires():
                             })
                 except Exception: pass
 
-        # Signalements feuxdeforet.fr
         try:
             ff_fires = get_cached_data("ff_live_feed", 180.0, fetch_feuxdeforet_fr_live)
             for ff_fire in ff_fires:
@@ -547,7 +542,6 @@ def get_fires():
                     plumes.append(calculate_smoke_plume(ff_fire['geometry']['coordinates'][1], ff_fire['geometry']['coordinates'][0], w_dir, w_speed, frp=30.0))
         except Exception: pass
 
-        # Radar avions tactiques
         try:
             for ac in get_cached_data("aircraft_live", 3.0, lambda: {"aircraft": []}).get("aircraft", []):
                 if ac.get("is_tactical") and ac.get("altitude", 0) < 1100 and ac.get("speed", 0) < 320:

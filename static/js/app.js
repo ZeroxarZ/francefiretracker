@@ -373,6 +373,31 @@ async function fetchWeather() {
 }
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
+// 👉 GÉNÉRATEUR D'ICÔNE VECTORIELLE SVG (GARANTIT LE NOIR ABSOLU ET LES COULEURS SUR TOUS LES TÉLÉPHONES)
+const svgFlamePath = "M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z M12 19c-2.21 0-4-1.66-4-3.71 0-1.48.99-2.76 2.41-3.23.36-.12.76.08.9.43.14.36-.04.77-.39.9-.84.28-1.42 1.01-1.42 1.9 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2c0-.89-.58-1.62-1.42-1.9-.35-.13-.53-.54-.39-.9.14-.35.54-.55.9-.43 1.42.47 2.41 1.75 2.41 3.23 0 2.05-1.79 3.71-4 3.71z";
+
+function getFireSvgIcon(isExtinguished, isRecent) {
+    let fillColor = "#ff5e00"; // Orange/Rouge actif standard
+    let wrapperClass = "fire-svg-wrapper";
+    let size = 28;
+
+    if (isExtinguished) {
+        fillColor = "#111318"; // Noir absolu pour éteint
+        wrapperClass += " extinguished";
+        size = 24;
+    } else if (isRecent) {
+        fillColor = "#ff1e00"; // Rouge urgent clignotant
+        wrapperClass += " recent-pulse";
+        size = 32;
+    }
+
+    // Un léger contour (stroke) pour que la flamme noire soit bien lisible sur fond sombre
+    let strokeAttr = isExtinguished ? 'stroke="#8a9ba8" stroke-width="1.2"' : '';
+
+    const html = `<div class="${wrapperClass}"><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fillColor}" ${strokeAttr} xmlns="http://www.w3.org/2000/svg"><path d="${svgFlamePath}"/></svg></div>`;
+    return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [size, size], iconAnchor: [size/2, size/2] });
+}
+
 async function fetchFires() {
     try {
         const loader = document.getElementById('smoke-data-loader'); if (loader) loader.style.display = 'block';
@@ -409,11 +434,14 @@ async function fetchFires() {
         data.fires.features.sort((a, b) => {
             const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
             const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
+            const extA = a.properties.is_extinguished ? 1 : 0;
+            const extB = b.properties.is_extinguished ? 1 : 0;
             const timeA = new Date(a.properties.time_utc).getTime() || 0;
             const timeB = new Date(b.properties.time_utc).getTime() || 0;
             const frpA = parseFloat(a.properties.frp) || 0;
             const frpB = parseFloat(b.properties.frp) || 0;
 
+            if (extA !== extB) return extA - extB;
             if (isTacticalA !== isTacticalB) return isTacticalB - isTacticalA;
             if (timeB !== timeA) return timeB - timeA;
             return frpB - frpA;
@@ -428,28 +456,22 @@ async function fetchFires() {
             const iconBg = isExtinguished ? "#333333" : (isTactical ? "#00aaff" : "#ff1e00");
             const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             
-            let markerClass = "fire-emoji-marker";
-            if (isExtinguished) {
-                markerClass = "fire-emoji-extinguished";
-            } else {
-                const fireTimeMs = new Date(props.time_utc).getTime();
-                const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
-                if (isTactical || (diffMins >= 0 && diffMins < 60)) {
-                    markerClass = "fire-emoji-marker fire-emoji-recent";
-                }
-            }
+            const fireTimeMs = new Date(props.time_utc).getTime();
+            const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
+            const isRecent = !isExtinguished && (isTactical || (diffMins >= 0 && diffMins < 60));
             
-            const fireIcon = L.divIcon({ className: 'custom-fire-icon', html: `<div class="${markerClass}">🔥</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+            // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG
+            const fireIcon = getFireSvgIcon(isExtinguished, isRecent);
             
             const zIdx = isExtinguished ? -800 : -500;
             const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: zIdx }).addTo(fireLayer);
             
-            const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[🟢 ÉTEINT / ARCHIVE]</span>' : (isTactical || (Date.now() - new Date(props.time_utc).getTime() < 3600000) ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
+            const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[⚫ ÉTEINT / ARCHIVE]</span>' : (isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
             marker.bindPopup(`<b>🔥 ${props.name} ${badgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
             fireMarkers[props.id] = marker;
             
-            const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">🟢 ÉTEINT</span>' : (isTactical || (Date.now() - new Date(props.time_utc).getTime() < 3600000) ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
-            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>🔥 ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
+            const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">⚫ ÉTEINT</span>' : (isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
+            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>${isExtinguished ? '⚫' : '🔥'} ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
         });
         fireListElem.innerHTML = htmlBuffer;
         document.getElementById('fire-count').innerText = `${data.count}`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${data.count}`;
