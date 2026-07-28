@@ -25,6 +25,7 @@ let activePolylineOuter = null; let activePolylineCore = null;
 let selectedCallsign = null; let latestWeatherData = null;
 const persistentTraces = {};
 let latestAircraftData = [];
+let latestFiresData = null;
 
 const MAJOR_CITIES = [
     { name: "Paris", lat: 48.8566, lon: 2.3522, major: true },
@@ -187,7 +188,8 @@ const activeLayers = {
     aircraft_civil: false, 
     airports: true, 
     cities: false, 
-    fires: true, 
+    fires_active: true,
+    fires_extinguished: true,
     burned: true, 
     plumes: false, 
     weather_wind: false, 
@@ -201,20 +203,25 @@ function toggleLayer(layerName) {
     if (activeLayers[layerName]) {
         if (btn) btn.classList.add('active');
         if (drawerBtn) drawerBtn.classList.add('active');
-        if (layerName === 'airports') map.addLayer(airportLayer); if (layerName === 'cities') map.addLayer(cityLayer); if (layerName === 'fires') map.addLayer(fireLayer); if (layerName === 'burned') map.addLayer(burnedLayer); if (layerName === 'plumes') map.addLayer(plumeLayer); 
+        if (layerName === 'airports') map.addLayer(airportLayer); if (layerName === 'cities') map.addLayer(cityLayer); if (layerName === 'burned') map.addLayer(burnedLayer); if (layerName === 'plumes') map.addLayer(plumeLayer); 
     } else {
         if (btn) btn.classList.remove('active');
         if (drawerBtn) drawerBtn.classList.remove('active');
-        if (layerName === 'airports') map.removeLayer(airportLayer); if (layerName === 'cities') map.removeLayer(cityLayer); if (layerName === 'fires') map.removeLayer(fireLayer); if (layerName === 'burned') map.removeLayer(burnedLayer); if (layerName === 'plumes') map.removeLayer(plumeLayer); 
+        if (layerName === 'airports') map.removeLayer(airportLayer); if (layerName === 'cities') map.removeLayer(cityLayer); if (layerName === 'burned') map.removeLayer(burnedLayer); if (layerName === 'plumes') map.removeLayer(plumeLayer); 
     }
 }
 
-function toggleMenuPopup(e, popupId, otherPopupId) {
+function toggleMenuPopup(e, popupId) {
     if (e) e.stopPropagation();
-    const popup = document.getElementById(popupId);
-    const other = document.getElementById(otherPopupId);
-    if (other && other.classList.contains('show')) other.classList.remove('show');
+    const allPopups = ['aircraft-menu-popup', 'fires-menu-popup', 'weather-menu-popup'];
+    allPopups.forEach(id => {
+        if (id !== popupId) {
+            const el = document.getElementById(id);
+            if (el && el.classList.contains('show')) el.classList.remove('show');
+        }
+    });
     
+    const popup = document.getElementById(popupId);
     if (e && e.currentTarget && window.innerWidth > 1024) {
         const rect = e.currentTarget.getBoundingClientRect();
         popup.style.left = `${rect.left}px`;
@@ -227,8 +234,9 @@ function toggleMenuPopup(e, popupId, otherPopupId) {
     }
     popup.classList.toggle('show');
 }
-function toggleAircraftMenu(e) { toggleMenuPopup(e, 'aircraft-menu-popup', 'weather-menu-popup'); }
-function toggleWeatherMenu(e) { toggleMenuPopup(e, 'weather-menu-popup', 'aircraft-menu-popup'); }
+function toggleAircraftMenu(e) { toggleMenuPopup(e, 'aircraft-menu-popup'); }
+function toggleFiresMenu(e) { toggleMenuPopup(e, 'fires-menu-popup'); }
+function toggleWeatherMenu(e) { toggleMenuPopup(e, 'weather-menu-popup'); }
 
 window.addEventListener('click', function(e) { 
     if (!e.target.matches('#btn-weather-main') && !e.target.closest('#weather-menu-popup')) { 
@@ -237,6 +245,10 @@ window.addEventListener('click', function(e) {
     }
     if (!e.target.matches('#btn-aircraft-main') && !e.target.closest('#aircraft-menu-popup')) { 
         const p = document.getElementById('aircraft-menu-popup'); 
+        if (p && p.classList.contains('show')) p.classList.remove('show'); 
+    }
+    if (!e.target.matches('#btn-fires-main') && !e.target.closest('#fires-menu-popup')) { 
+        const p = document.getElementById('fires-menu-popup'); 
         if (p && p.classList.contains('show')) p.classList.remove('show'); 
     }
 });
@@ -256,7 +268,43 @@ function toggleAircraftSubLayer(type) {
         if (drawerBtn) drawerBtn.classList.remove('active');
     }
     
+    const mainBtn = document.getElementById('btn-aircraft-main');
+    if (mainBtn) {
+        if (activeLayers.aircraft_tactical || activeLayers.aircraft_civil) {
+            mainBtn.classList.add('active');
+        } else {
+            mainBtn.classList.remove('active');
+        }
+    }
+    
     renderAircraftList();
+}
+
+function toggleFiresSubLayer(type) {
+    const key = `fires_${type}`;
+    activeLayers[key] = !activeLayers[key];
+    
+    const btn = document.getElementById(`sub-btn-fires_${type}`);
+    const drawerBtn = document.getElementById(`drawer-btn-fires_${type}`);
+    
+    if (activeLayers[key]) {
+        if (btn) btn.classList.add('active_sub');
+        if (drawerBtn) drawerBtn.classList.add('active');
+    } else {
+        if (btn) btn.classList.remove('active_sub');
+        if (drawerBtn) drawerBtn.classList.remove('active');
+    }
+    
+    const mainBtn = document.getElementById('btn-fires-main');
+    if (mainBtn) {
+        if (activeLayers.fires_active || activeLayers.fires_extinguished) {
+            mainBtn.classList.add('active');
+        } else {
+            mainBtn.classList.remove('active');
+        }
+    }
+    
+    renderFiresList();
 }
 
 async function fetchRainRadar() {
@@ -373,11 +421,11 @@ async function fetchWeather() {
 }
 map.on('moveend', () => { if (weatherTimeout) clearTimeout(weatherTimeout); weatherTimeout = setTimeout(fetchWeather, 600); });
 
-// 👉 GÉNÉRATEUR D'ICÔNE VECTORIELLE SVG (GARANTIT LE NOIR ABSOLU ET LES COULEURS SUR TOUS LES TÉLÉPHONES)
+// 👉 GÉNÉRATEUR D'ICÔNE VECTORIELLE SVG (GARANTIT LE NOIR ABSOLU SUR TOUS LES TÉLÉPHONES)
 const svgFlamePath = "M12 23c-4.97 0-9-3.73-9-8.33 0-3.32 2.22-6.19 5.4-7.25.39-.13.82.08.97.47.16.4-.04.85-.43 1.05-2.39.79-4.01 2.82-4.01 5.23 0 3.49 3.14 6.33 7.07 6.33s7.07-2.84 7.07-6.33c0-2.41-1.62-4.44-4.01-5.23-.39-.2-.59-.65-.43-1.05.15-.39.58-.6 0.97-.47 3.18 1.06 5.4 3.93 5.4 7.25 0 4.6-4.03 8.33-9 8.33z M12 19c-2.21 0-4-1.66-4-3.71 0-1.48.99-2.76 2.41-3.23.36-.12.76.08.9.43.14.36-.04.77-.39.9-.84.28-1.42 1.01-1.42 1.9 0 1.1 1.12 2 2.5 2s2.5-.9 2.5-2c0-.89-.58-1.62-1.42-1.9-.35-.13-.53-.54-.39-.9.14-.35.54-.55.9-.43 1.42.47 2.41 1.75 2.41 3.23 0 2.05-1.79 3.71-4 3.71z";
 
 function getFireSvgIcon(isExtinguished, isRecent) {
-    let fillColor = "#ff5e00"; // Orange/Rouge actif standard
+    let fillColor = "#ff5e00"; 
     let wrapperClass = "fire-svg-wrapper";
     let size = 28;
 
@@ -391,9 +439,7 @@ function getFireSvgIcon(isExtinguished, isRecent) {
         size = 32;
     }
 
-    // Un léger contour (stroke) pour que la flamme noire soit bien lisible sur fond sombre
     let strokeAttr = isExtinguished ? 'stroke="#8a9ba8" stroke-width="1.2"' : '';
-
     const html = `<div class="${wrapperClass}"><svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fillColor}" ${strokeAttr} xmlns="http://www.w3.org/2000/svg"><path d="${svgFlamePath}"/></svg></div>`;
     return L.divIcon({ className: 'custom-fire-marker-svg', html: html, iconSize: [size, size], iconAnchor: [size/2, size/2] });
 }
@@ -402,10 +448,7 @@ async function fetchFires() {
     try {
         const loader = document.getElementById('smoke-data-loader'); if (loader) loader.style.display = 'block';
         const res = await fetch('/api/fires'); const data = await res.json();
-        fireLayer.clearLayers(); plumeLayer.clearLayers(); burnedLayer.clearLayers();
-        Object.keys(fireMarkers).forEach(k => delete fireMarkers[k]);
-        
-        const fireListElem = document.getElementById('fire-list-container');
+        latestFiresData = data;
         
         if (data.latest_detection_exact) {
             document.getElementById('sat-time-fr').innerText = data.latest_detection_exact;
@@ -420,63 +463,91 @@ async function fetchFires() {
         
         if (data.stats) { document.getElementById('stat-hectares').innerText = data.stats.hectares; document.getElementById('stat-houses').innerText = data.stats.houses; document.getElementById('stat-evac').innerText = data.stats.evacuations; }
 
-        if (!data.fires || data.fires.features.length === 0) {
-            fireListElem.innerHTML = `<div class="card-item" style="border-left-color: #00dd66;">Aucun foyer thermique actif.</div>`;
-            document.getElementById('fire-count').innerText = `0`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `0`;
-            if (loader) loader.style.display = 'none';
-            return;
-        }
+        plumeLayer.clearLayers(); burnedLayer.clearLayers();
+        if (activeLayers.plumes && data.plumes) L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.25, color: '#ff6600', weight: 1 } }).addTo(plumeLayer);
+        if (activeLayers.burned && data.burned_areas) L.geoJSON(data.burned_areas, { style: { fillColor: '#8b0000', fillOpacity: 0.35, color: '#ff4500', weight: 2, dashArray: '5, 5', lineCap: 'round', lineJoin: 'round' } }).addTo(burnedLayer);
         
-        if (activeLayers.plumes) L.geoJSON(data.plumes, { style: { fillColor: '#ff3300', fillOpacity: 0.25, color: '#ff6600', weight: 1 } }).addTo(plumeLayer);
-        if (activeLayers.burned) L.geoJSON(data.burned_areas, { style: { fillColor: '#8b0000', fillOpacity: 0.35, color: '#ff4500', weight: 2, dashArray: '5, 5', lineCap: 'round', lineJoin: 'round' } }).addTo(burnedLayer);
-        
-        // 👉 TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
-        data.fires.features.sort((a, b) => {
-            const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
-            const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
-            const extA = a.properties.is_extinguished ? 1 : 0;
-            const extB = b.properties.is_extinguished ? 1 : 0;
-            const timeA = new Date(a.properties.time_utc).getTime() || 0;
-            const timeB = new Date(b.properties.time_utc).getTime() || 0;
-            const frpA = parseFloat(a.properties.frp) || 0;
-            const frpB = parseFloat(b.properties.frp) || 0;
-
-            if (extA !== extB) return extA - extB;
-            if (isTacticalA !== isTacticalB) return isTacticalB - isTacticalA;
-            if (timeB !== timeA) return timeB - timeA;
-            return frpB - frpA;
-        });
-
-        let htmlBuffer = '';
-        data.fires.features.forEach(fire => {
-            const props = fire.properties; const coords = fire.geometry.coordinates;
-            const isTactical = props.source && props.source.includes("Radar"); 
-            const isExtinguished = props.is_extinguished === true;
-            
-            const iconBg = isExtinguished ? "#333333" : (isTactical ? "#00aaff" : "#ff1e00");
-            const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            const fireTimeMs = new Date(props.time_utc).getTime();
-            const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
-            const isRecent = !isExtinguished && (isTactical || (diffMins >= 0 && diffMins < 60));
-            
-            // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG
-            const fireIcon = getFireSvgIcon(isExtinguished, isRecent);
-            
-            const zIdx = isExtinguished ? -800 : -500;
-            const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: zIdx }).addTo(fireLayer);
-            
-            const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[⚫ ÉTEINT / ARCHIVE]</span>' : (isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
-            marker.bindPopup(`<b>🔥 ${props.name} ${badgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
-            fireMarkers[props.id] = marker;
-            
-            const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">⚫ ÉTEINT</span>' : (isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
-            htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>${isExtinguished ? '⚫' : '🔥'} ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
-        });
-        fireListElem.innerHTML = htmlBuffer;
-        document.getElementById('fire-count').innerText = `${data.count}`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${data.count}`;
+        renderFiresList();
         if (loader) loader.style.display = 'none';
     } catch (err) {}
+}
+
+function renderFiresList() {
+    if (!latestFiresData) return;
+    const data = latestFiresData;
+    const fireListElem = document.getElementById('fire-list-container');
+    
+    fireLayer.clearLayers();
+    Object.keys(fireMarkers).forEach(k => delete fireMarkers[k]);
+    
+    if (!data.fires || data.fires.features.length === 0) {
+        fireListElem.innerHTML = `<div class="card-item" style="border-left-color: #00dd66;">Aucun foyer thermique actif.</div>`;
+        document.getElementById('fire-count').innerText = `0`; if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `0`;
+        return;
+    }
+    
+    // 👉 TRI TACTIQUE (1. RADAR EN DIRECT -> 2. RÉCENCE -> 3. FRP)
+    data.fires.features.sort((a, b) => {
+        const isTacticalA = (a.properties.source && a.properties.source.includes("Radar")) ? 1 : 0;
+        const isTacticalB = (b.properties.source && b.properties.source.includes("Radar")) ? 1 : 0;
+        const extA = a.properties.is_extinguished ? 1 : 0;
+        const extB = b.properties.is_extinguished ? 1 : 0;
+        const timeA = new Date(a.properties.time_utc).getTime() || 0;
+        const timeB = new Date(b.properties.time_utc).getTime() || 0;
+        const frpA = parseFloat(a.properties.frp) || 0;
+        const frpB = parseFloat(b.properties.frp) || 0;
+
+        if (extA !== extB) return extA - extB;
+        if (isTacticalA !== isTacticalB) return isTacticalB - isTacticalA;
+        if (timeB !== timeA) return timeB - timeA;
+        return frpB - frpA;
+    });
+
+    let htmlBuffer = '';
+    let visibleCount = 0;
+    let activeCount = 0;
+
+    data.fires.features.forEach(fire => {
+        const props = fire.properties; const coords = fire.geometry.coordinates;
+        const isTactical = props.source && props.source.includes("Radar"); 
+        const isExtinguished = props.is_extinguished === true;
+        
+        // 👉 FILTRAGE EN DIRECT SELON L'ÉTAT DES COUCHES
+        if (isExtinguished && !activeLayers.fires_extinguished) return;
+        if (!isExtinguished && !activeLayers.fires_active) return;
+        
+        visibleCount++;
+        if (!isExtinguished) activeCount++;
+        
+        const iconBg = isExtinguished ? "#333333" : (isTactical ? "#00aaff" : "#ff1e00");
+        const ptTimeFr = new Date(props.time_utc).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        const fireTimeMs = new Date(props.time_utc).getTime();
+        const diffMins = (Date.now() - fireTimeMs) / (1000 * 60);
+        const isRecent = !isExtinguished && (isTactical || (diffMins >= 0 && diffMins < 60));
+        
+        // 👉 APPEL EFFECTIF DE LA FONCTION VECTORIELLE SVG SUR LA CARTE
+        const fireIcon = getFireSvgIcon(isExtinguished, isRecent);
+        
+        const zIdx = isExtinguished ? -800 : -500;
+        const marker = L.marker([coords[1], coords[0]], { icon: fireIcon, zIndexOffset: zIdx }).addTo(fireLayer);
+        
+        const badgePopup = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.75rem;">[⚫ ÉTEINT / ARCHIVE]</span>' : (isRecent ? '<span class="badge-recent">⚡ DIRECT / RÉCENT</span>' : '');
+        marker.bindPopup(`<b>🔥 ${props.name} ${badgePopup}</b><br><b>Heure FR:</b> ${ptTimeFr}<br><b>Source:</b> ${props.source}<br><b>Statut:</b> ${props.status}`);
+        fireMarkers[props.id] = marker;
+        
+        const badgeList = isExtinguished ? '<span style="color:#8a9ba8; font-size:0.65rem;">⚫ ÉTEINT</span>' : (isRecent ? '<span class="badge-recent">🔴 DIRECT</span>' : '');
+        htmlBuffer += `<div class="card-item fire" style="border-left-color: ${iconBg}; ${isExtinguished ? 'opacity:0.65;' : ''}" onclick="selectFire(${coords[1]}, ${coords[0]}, '${props.id}')"><div class="card-header"><span>${isExtinguished ? '⚫' : '🔥'} ${props.name} ${badgeList}</span><span>${props.status}</span></div><div class="card-details"><span>${props.source}</span><span>à ${ptTimeFr} FR</span></div></div>`;
+    });
+    
+    if (visibleCount === 0) {
+        fireListElem.innerHTML = `<div class="card-item" style="border-left-color: #8a9ba8;">Aucun foyer affiché avec les filtres actuels.</div>`;
+    } else {
+        fireListElem.innerHTML = htmlBuffer;
+    }
+    
+    document.getElementById('fire-count').innerText = `${activeCount} actifs / ${visibleCount}`; 
+    if (document.getElementById('tab-count-fires')) document.getElementById('tab-count-fires').innerText = `${visibleCount}`;
 }
 
 async function fetchAircraft() {

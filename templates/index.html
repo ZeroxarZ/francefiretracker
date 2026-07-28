@@ -94,10 +94,14 @@
             <button class="drawer-item active" id="drawer-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
             <button class="drawer-item" id="drawer-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
 
+            <!-- 👉 SOUS-MENU MOBILE FOYERS & INCENDIES -->
+            <div class="drawer-section-label" style="margin-top:14px;">Foyers & Incendies</div>
+            <button class="drawer-item active" id="drawer-btn-fires_active" onclick="toggleFiresSubLayer('active')">🔥 Foyers Actifs (En cours)</button>
+            <button class="drawer-item active" id="drawer-btn-fires_extinguished" onclick="toggleFiresSubLayer('extinguished')">⚫ Foyers Éteints / Archivés</button>
+
             <div class="drawer-section-label" style="margin-top:14px;">Couches Cartographiques</div>
             <button class="drawer-item active" id="drawer-btn-airports" onclick="toggleLayer('airports')">🛬 Bases & Aéroports</button>
             <button class="drawer-item" id="drawer-btn-cities" onclick="toggleLayer('cities')">📍 Villes principales</button>
-            <button class="drawer-item active" id="drawer-btn-fires" onclick="toggleLayer('fires')">🔥 Foyers Actifs (NASA)</button>
             <button class="drawer-item active" id="drawer-btn-burned" onclick="toggleLayer('burned')">🛡️ Zone de sécurité</button>
             <button class="drawer-item" id="drawer-btn-plumes" onclick="toggleLayer('plumes')">💨 Panaches de fumée</button>
 
@@ -114,6 +118,12 @@
     <div class="weather-menu-popup" id="aircraft-menu-popup" style="width: 250px;">
         <button class="weather-sub-btn active_sub" id="sub-btn-tactical" onclick="toggleAircraftSubLayer('tactical')">🧯 Sécurité Civile & Militaire</button>
         <button class="weather-sub-btn" id="sub-btn-civil" onclick="toggleAircraftSubLayer('civil')">✈️ Trafic Civil / Commercial</button>
+    </div>
+
+    <!-- 👉 NOUVEAU MENU FOYERS FLOTTANT (PC) -->
+    <div class="weather-menu-popup" id="fires-menu-popup" style="width: 250px;">
+        <button class="weather-sub-btn active_sub" id="sub-btn-fires_active" onclick="toggleFiresSubLayer('active')">🔥 Foyers Actifs (En cours)</button>
+        <button class="weather-sub-btn active_sub" id="sub-btn-fires_extinguished" onclick="toggleFiresSubLayer('extinguished')">⚫ Foyers Éteints / Archivés</button>
     </div>
 
     <!-- 👉 MENU MÉTÉO FLOTTANT (PC) -->
@@ -135,7 +145,8 @@
             <button class="filter-btn active" id="btn-aircraft-main" onclick="toggleAircraftMenu(event)">✈️ Avions</button>
             <button class="filter-btn active" id="btn-airports" onclick="toggleLayer('airports')">🛬 Bases</button>
             <button class="filter-btn" id="btn-cities" onclick="toggleLayer('cities')">📍 Villes</button>
-            <button class="filter-btn active" id="btn-fires" onclick="toggleLayer('fires')">🔥 Foyers</button>
+            <!-- 👉 BOUTON FOYERS AVEC OUVERTURE DE SOUS-MENU -->
+            <button class="filter-btn active" id="btn-fires-main" onclick="toggleFiresMenu(event)">🔥 Foyers</button>
             <button class="filter-btn active" id="btn-burned" onclick="toggleLayer('burned')">🛡️ Zone de sécurité</button>
             <button class="filter-btn" id="btn-plumes" onclick="toggleLayer('plumes')">💨 Fumées</button>
             <button class="filter-btn" id="btn-weather-main" onclick="toggleWeatherMenu(event)">🌦️ Météo</button>
@@ -195,7 +206,7 @@
             <div class="panel-section" id="panel-fires" style="flex: 1;">
                 <div class="section-title desktop-only" onclick="toggleSection('fires')">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span>🛰️ Foyers Actifs (<span id="fire-count">0</span>)</span>
+                        <span>🛰️ Foyers (<span id="fire-count">0</span>)</span>
                         <div class="smoke-loading-spinner" id="smoke-data-loader" title="Acquisition données fumées..."></div>
                     </div>
                     <button class="collapse-btn" id="btn-collapse-fires">−</button>
@@ -234,7 +245,7 @@
             </div>
         </aside>
 
-        <!-- 👉 LÉGENDE TACTIQUE 100% SVG FORCÉ (ZÉRO OVERRIDE MOBILE POSSIBLE) -->
+        <!-- 👉 LÉGENDE TACTIQUE 100% SVG FORCÉ -->
         <div class="map-legend" id="map-legend">
             <div class="legend-title" onclick="toggleLegend()">
                 <span>📊 Légende Tactique</span>
